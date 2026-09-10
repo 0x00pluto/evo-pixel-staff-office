@@ -68,3 +68,6 @@ assets/**/*.zip
 assets/**/*.7z
 assets/**/*.wav
 assets/**/*.mp3
+
+# Cursor
+.cursor/

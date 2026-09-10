@@ -4,11 +4,12 @@
 
 ## 开始工作前
 
-1. 先读 [`README.md`](./README.md) 了解启动方式与目录。
+1. 先读 [`README.md`](./README.md) 了解启动方式与目录；文档地图见 [`docs/doc_index.md`](./docs/doc_index.md)。
 2. 改动落进既有目录语义（见下表），不新增平级顶层目录。
 3. 若同级存在 [`../AgentWikiIndex/`](../AgentWikiIndex/)，改完「能力声明」后执行：
    `python3 ../AgentWikiIndex/scripts/refresh_catalog.py`
    若不存在该目录，**跳过**，不要报错、不要去建。
+4. 团队 Cursor 命令见 [`.cursor/commands/team/`](./.cursor/commands/team/)（产品 / 验收 / 游戏前端 / 测试 / 自主交付）；母版维护于 Obsidian Vibecoding 库，勿在本仓另起一套命令体系。
 
 ## 目录约定
 
@@ -18,7 +19,8 @@
 | `bin/` | `pixel-office` CLI 入口 | 是 |
 | `scripts/` | 素材生成等脚本入口 | 是 |
 | `public/` | 静态资源与像素素材 | 是 |
-| `docs/` | 文档（按需再建） | 是 |
+| `docs/` | 技术文档 | 是 |
+| `specs/` | 产品规格（PRD 等） | 是 |
 | `cache/` | 可重建缓存 | 否 |
 | `temp/` | 中间产物 | 否 |
 | `output/` | 最终产物归档 | 否 |
