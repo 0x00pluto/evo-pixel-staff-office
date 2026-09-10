@@ -2,15 +2,19 @@
 name: prd-00001-office-asset-redesign
 sequence: 1
 description: 用 Pixel Life 32×32 重布分区办公室，用 Pipoya 64 套角色替换员工小人
-status: backlog
+status: partial
 created: 2026-09-10T09:45:37Z
+last_accepted_at: 2026-09-10T10:36:05Z
+accepted_commit: d29e0e4
+accepted_branch: main
+accepted_scope: R0,R1
 ---
 
 # PRD: 办公室素材重布（Office Asset Redesign）
 
 | 属性 | 值 |
 |------|------|
-| 状态 | backlog |
+| 状态 | 工程：partial（见文末「工程验收状态」） |
 | 范围 | 像素办公室视觉与人物素材；不改花名册语义与 CatalogSource |
 | 关联文档 | `README.md`、`public/assets/CREDITS.md`、`src/game/OfficeScene.ts`、`scripts/gen-pixel-assets.mjs`、`src/catalog/mapPersona.ts` |
 | 素材来源 | [Pixel Life: Office Essentials](https://christianperich.itch.io/pixel-life-office-essentials)；[PIPOYA FREE RPG Character Sprites 32x32](https://pipoya.itch.io/pipoya-free-rpg-character-sprites-32x32) |
@@ -273,3 +277,64 @@ stateDiagram-v2
 | 日期 | 说明 |
 |------|------|
 | 2026-09-10 | 初稿：由 `/team:product-manager` 落盘；分区办公室 + Pipoya 64 套；R0/R1 切片 |
+
+## 1. 工程验收状态
+
+> 由 `/team:prd-accept` 维护；勿手工编造「通过」。最后更新：2026-09-10T10:36:05Z，main@d29e0e4，范围：R0,R1。
+
+### 总览
+
+- 工程状态：`partial`
+- 验收判定：R0 目标能力大体落地，但办公室家具素材由 PRD 原文 Pixel Life / Tiled `office.json` **枢轴**为 `office.png` Hash atlas + `office-layout.json`；Pipoya 64 套与 R1 增强已实现
+- 最近验收：2026-09-10T10:36:05Z（`/team:prd-accept`，非外置 S2 Validator；S2 曾按人要求暂停）
+- 代码提交：`main` @ `d29e0e4`
+- 摘要：
+  1. 分区工作室布局 ≥21 工位、过道点缀、碰撞/spawn/computer 见 `public/assets/office-layout.json`
+  2. Pipoya 64 套 atlas、`skin = hash(id) % 64`、渲染路径无 hue tint
+  3. R1：家具/小人 `setDepth(y)`、过道装饰、页面级 `onAssetsError`
+  4. `gen:assets` 只写 layout；`pack:assets` 只装角色；CREDITS/README 已同步
+  5. 遗留：与 PRD 文案「Pixel Life + Tiled layers」不完全一致；外置 S2 门禁未跑完
+
+### Release 交付
+
+| Release | 状态 | 说明 |
+|---------|------|------|
+| R0 | 部分 | 分区办公室 + Pipoya + 交互/合规达标；家具源与地图格式偏离 PRD 原文 |
+| R1 | 通过 | Y 排序、过道加密、页面级素材失败提示已实现 |
+
+### 功能验收清单（Agent 优先读此表）
+
+| ID | 能力摘要 | Release | 状态 | 证据 |
+|----|----------|---------|------|------|
+| R0-1 | 分区工作室：≥2 工位簇、过道、墙/门或绿植点缀 | R0 | 通过 | `public/assets/office-layout.json`（deskCount=21、aisle decor）；`OfficeScene` `load.atlas` |
+| R0-2 | 接入 Pixel Life 瓦片地图（Tiled layers） | R0 | 部分 | 运行时改用 `office.png` + `office_core_atlas.json` + `office-layout.json`；旧 `tileset.png`/`office.json` 弃用（见 CREDITS） |
+| R0-3 | Pipoya 64 套四向走；`skin=hash%64`；无 tint | R0 | 通过 | `characters.png`；`mapPersona.ts`/`catalog.mjs` `% 64`；`OfficeScene` 无 `setTint`；`SKIN_COUNT=64` |
+| R0-4 | TILE≈32、角色 SCALE≈2；动画/名牌适配 | R0 | 通过 | `OfficeScene.ts`：`TILE=32`、`CHAR_SCALE=2` |
+| R0-5 | FSM idle/wander/working；点选详情；名牌；拖缩放；刷新 | R0 | 通过 | `OfficeScene` FSM + 相机；`App.tsx`/`AgentCard`/`NameplateLayer`/`Toolbar` |
+| R0-6 | 空/超量花名册 hash 复用工位不报错 | R0 | 通过 | `hashPick(persona.id, this.spawns)` |
+| R0-7 | CREDITS + 原包 zip/rar 不入库 | R0 | 通过 | `public/assets/CREDITS.md`；`git ls-files` 仅切片 PNG/JSON |
+| R0-8 | `gen:assets` 不覆盖第三方 PNG | R0 | 通过 | `scripts/gen-pixel-assets.mjs` 仅 `writeFileSync(...office-layout.json)` |
+| R0-9 | 文档索引同步 | R0 | 通过 | `docs/doc_index.md`、`README.md` |
+| R1-1 | 家具与小人 Y 排序遮挡 | R1 | 通过 | `spawnFurniture`/`update`：`setDepth(y)` |
+| R1-2 | 过道装饰更密（非闸机/机柜专题） | R1 | 通过 | `gen-pixel-assets.mjs` aisleItems + plants/shelf/decor |
+| R1-3 | 素材加载失败页面级提示 | R1 | 通过 | `onAssetsError` + `App.tsx`「办公室素材无法加载」 |
+| NT-1 | 闸机/坐下/换装/新 CatalogSource 等 | — | 范围外 | PRD 非目标 |
+
+### 未完成与遗留
+
+- 办公室家具素材源：**非** Pixel Life itch 包，而为维护者提供的 `office.png` atlas（产品中途枢轴）；若需与 PRD 文案完全对齐，应修订 PRD「素材来源」或回切 Pixel Life。
+- 地图形态：非 Tiled `ground/furniture/collision/objects` 运行时加载，而为 `office-layout.json` 等价语义。
+- 外置 `/team:feature-dev` S2 `claude` Validator 曾暂停，本验收章基于仓库路径 + `pnpm build`/`lint`，**未**以 S2 末行 `VERDICT: PASS` 为门禁。
+- 仓库仍残留弃用文件 `public/assets/tileset.png`、`office.json`（未参与运行时）。
+
+### 质量检查
+
+| 检查项 | 状态 |
+|--------|------|
+| pnpm build | 通过（`tsc -b && vite build` 绿） |
+| pnpm lint | 通过（oxlint 无 error） |
+| 文档与 OpenAPI 同步 | 通过（本仓无 OpenAPI；README/CREDITS/doc_index 已更新） |
+
+---
+统计：通过 11 / 部分 1 / 未实现 0 / 范围外 1
+（清单：R0-2=部分；NT-1=范围外；其余通过）
