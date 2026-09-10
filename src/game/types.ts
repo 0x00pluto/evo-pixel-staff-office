@@ -13,6 +13,8 @@ export interface NameplateView {
 export interface OfficeGameCallbacks {
   onSelect: (agent: AgentPersona | null) => void
   onNameplates: (plates: NameplateView[]) => void
+  /** Page-level asset failure (missing PNG/JSON); optional for callers that only need catalog errors. */
+  onAssetsError?: (message: string) => void
 }
 
 export interface OfficeGameHandle {

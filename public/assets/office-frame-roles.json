@@ -1,0 +1,11 @@
+{
+  "floor": ["office_core_014", "office_core_011"],
+  "wall": ["office_core_001", "office_core_002", "office_core_004"],
+  "window": ["office_core_028"],
+  "desk": ["office_core_036", "office_core_038", "office_core_040", "office_core_034"],
+  "chair": ["office_core_050"],
+  "plant": ["office_core_146", "office_core_176", "office_core_151", "office_core_174"],
+  "shelf": ["office_core_102", "office_core_114"],
+  "conference": ["office_core_119", "office_core_120"],
+  "decor": ["office_core_166", "office_core_023"]
+}

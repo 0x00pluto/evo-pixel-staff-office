@@ -1,0 +1,64 @@
+Male/Male 01-1.png
+Male/Male 02-1.png
+Male/Male 03-1.png
+Male/Male 04-1.png
+Male/Male 05-2.png
+Male/Male 06-2.png
+Male/Male 07-2.png
+Male/Male 08-3.png
+Male/Male 09-3.png
+Male/Male 10-3.png
+Male/Male 11-4.png
+Male/Male 12-4.png
+Male/Male 13-4.png
+Male/Male 15-1.png
+Male/Male 16-1.png
+Male/Male 17-1.png
+Female/Female 01-1.png
+Female/Female 02-2.png
+Female/Female 03-4.png
+Female/Female 05-2.png
+Female/Female 06-3.png
+Female/Female 08-1.png
+Female/Female 09-3.png
+Female/Female 10-4.png
+Female/Female 12-2.png
+Female/Female 13-4.png
+Female/Female 15-1.png
+Female/Female 16-3.png
+Female/Female 18-1.png
+Female/Female 19-2.png
+Female/Female 20-4.png
+Female/Female 22-2.png
+Soldier/Soldier 01-1.png
+Soldier/Soldier 01-4.png
+Soldier/Soldier 02-4.png
+Soldier/Soldier 03-3.png
+Soldier/Soldier 04-3.png
+Soldier/Soldier 05-2.png
+Soldier/Soldier 06-2.png
+Soldier/Soldier 07-1.png
+Enemy/Enemy 01-1.png
+Enemy/Enemy 03-1.png
+Enemy/Enemy 06-1.png
+Enemy/Enemy 09-1.png
+Enemy/Enemy 12-1.png
+Enemy/Enemy 16-1.png
+Enemy/Enemy 16-4.png
+Enemy/Enemy 16-7.png
+Enemy/Enemy 17-2.png
+Enemy/Enemy 17-5.png
+Enemy/Enemy 17-8.png
+Enemy/Enemy 20.png
+Other/pien2.png
+Japanese school characters/school uniform 1/su1 Student fmale 01.png
+Japanese school characters/school uniform 1/su1 Student male 05.png
+Japanese school characters/school uniform 2/su2 Student fmale 14.png
+Japanese school characters/school uniform 3/su3 Student fmale 06.png
+Japanese school characters/school uniform 3/su3 Student male 10.png
+Japanese school characters/school uniform 4/su4 Student male 01.png
+Enemy/Enemy 02-1.png
+Enemy/Enemy 04-1.png
+Enemy/Enemy 05-1.png
+Enemy/Enemy 07-1.png
+Enemy/Enemy 08-1.png

@@ -2,4 +2,4 @@
 
 | 序号 | 路径 | 摘要 |
 |------|------|------|
-| — | — | （尚无 PRD；由 `/team:product-manager` 落盘后追加） |
+| 00001 | `specs/prds/prd-00001-office-asset-redesign.md` | 用 Pixel Life 重布分区办公室，用 Pipoya 64 套替换员工小人 |

@@ -9,6 +9,8 @@
 - 本地 Node CLI（读花名册 + 静态托管）
 - 包管理：**pnpm**
 
+完整架构、目录约定与常改落点见 [`docs/dev-guide.md`](docs/dev-guide.md)。
+
 ## 准备
 
 依赖已装则可跳过：
@@ -17,12 +19,21 @@
 pnpm install
 ```
 
-生成像素素材（仓库已带一份；改生成器后重跑）：
+### 像素素材
+
+办公室家具用入库的 TexturePacker atlas：
+
+- `public/assets/office.png` + `office_core_atlas.json`
+- 布局由 `pnpm gen:assets` 生成 `office-layout.json`（不覆盖 PNG）
+
+Pipoya 角色原包解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA`），组装：
 
 ```bash
-pnpm gen:assets
+pnpm pack:assets   # → characters.png
+pnpm gen:assets    # → office-layout.json
 ```
 
+署名与许可见 [`public/assets/CREDITS.md`](public/assets/CREDITS.md)。
 ## 开发
 
 指定花名册路径后启动 Vite（开发态 `/api/catalog` 与 CLI 同源）：

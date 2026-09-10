@@ -20,9 +20,9 @@ export interface AgentPersona {
   owns: string[]
   not: string
   siblings: CatalogSibling[]
-  /** 0–3 character skin row */
+  /** 0–63 Pipoya character skin index (hash(id) % 64) */
   skin: number
-  /** hue offset 0–359 for tint variety */
+  /** Deprecated for rendering (R0+); kept for payload stability. Was hue offset 0–359. */
   tint: number
 }
 

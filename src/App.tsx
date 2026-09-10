@@ -23,6 +23,7 @@ export default function App() {
   const [sourcePath, setSourcePath] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [assetsError, setAssetsError] = useState<string | null>(null)
   const [selected, setSelected] = useState<AgentPersona | null>(null)
   const [plates, setPlates] = useState<NameplateView[]>([])
 
@@ -61,6 +62,7 @@ export default function App() {
     ;(async () => {
       setLoading(true)
       setError(null)
+      setAssetsError(null)
       try {
         const payload = await fetchCatalog(false)
         if (cancelled) return
@@ -68,6 +70,9 @@ export default function App() {
         gameRef.current = createOfficeGame(host, payload.agents, {
           onSelect: (agent) => setSelected(agent),
           onNameplates: (next) => setPlates(next),
+          onAssetsError: (message) => {
+            if (!cancelled) setAssetsError(message)
+          },
         })
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
@@ -102,6 +107,15 @@ export default function App() {
             setSelected(agent)
           }}
         />
+        {assetsError ? (
+          <div
+            role="alert"
+            className="absolute inset-x-4 top-4 z-30 mx-auto max-w-xl rounded-md border border-rose-500/60 bg-rose-950/95 px-4 py-3 text-sm text-rose-100 shadow-lg"
+          >
+            <div className="font-semibold tracking-wide">办公室素材无法加载</div>
+            <p className="mt-1 text-xs leading-relaxed text-rose-200/90">{assetsError}</p>
+          </div>
+        ) : null}
         <div className="pointer-events-none absolute bottom-2 left-3 z-20 text-[10px] text-stone-500">
           拖拽移动相机 · 滚轮缩放 · 点击小人查看详情
         </div>

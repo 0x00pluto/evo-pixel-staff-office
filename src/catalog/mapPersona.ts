@@ -71,7 +71,7 @@ export function workspaceToPersona(ws: CatalogWorkspace): AgentPersona {
           }),
         )
       : [],
-    skin: hashString(id) % 4,
+    skin: hashString(id) % 64,
     tint: hashString(`${id}:tint`) % 360,
   }
 }

@@ -48,7 +48,7 @@ export function workspaceToPersona(ws) {
           reference: s.reference || '',
         }))
       : [],
-    skin: hashString(id) % 4,
+    skin: hashString(id) % 64,
     tint: hashString(`${id}:tint`) % 360,
   }
 }
