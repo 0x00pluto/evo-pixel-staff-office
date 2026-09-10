@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+dist-ssr/
+*.tsbuildinfo
+.vite/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Caches / temp / output（脚手架约定，可随时删）
+cache/
+temp/
+output/
+.cache/
+.turbo/
+.eslintcache
+.stylelintcache
+
+# Python（若本仓或脚本临时用到）
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.local
+
+# Package manager noise
+.pnpm-store/
+
+# Optional large media under assets/ (if added later)
+assets/**/*.pdf
+assets/**/*.mp4
+assets/**/*.mov
+assets/**/*.mkv
+assets/**/*.zip
+assets/**/*.7z
+assets/**/*.wav
+assets/**/*.mp3
