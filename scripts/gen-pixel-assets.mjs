@@ -3,7 +3,7 @@
  * Generate office-layout.json for atlas-based office (office.png + office_core_atlas.json).
  * Does NOT write tileset.png / characters.png / office.png.
  *
- * Layout uses a logical grid: cell = 32px atlas world units at furniture scale 1.
+ * Minimal layout: floor tiles + one desk per workstation + trash beside each desk.
  * Characters still render at TILE*CHAR_SCALE in OfficeScene.
  */
 import fs from 'node:fs'
@@ -27,13 +27,11 @@ function loadRoles() {
 
 function makeLayout(roles) {
   const desks = roles.desk
-  const plants = roles.plant
-  const walls = roles.wall
-  const shelves = roles.shelf
-  const decor = roles.decor
-  const windows = roles.window
-  const conference = roles.conference
+  const trash = roles.trash?.[0]
   const floorPrimary = roles.floor[0]
+
+  if (!desks?.length) throw new Error('office-frame-roles.json needs desk[]')
+  if (!floorPrimary) throw new Error('office-frame-roles.json needs floor[0]')
 
   const furniture = []
   const collision = Array.from({ length: MAP_H }, () => Array.from({ length: MAP_W }, () => false))
@@ -56,23 +54,6 @@ function makeLayout(roles) {
     if (collide) mark(gx, gy, cw, ch)
   }
 
-  // Outer walls / partitions along top and sides
-  for (let x = 1; x < MAP_W - 1; x += 2) {
-    place(walls[x % walls.length], x, 0, { role: 'wall', cw: 2, ch: 1 })
-  }
-  // Door gap in top center — skip wall, place window beside
-  place(windows[0], Math.floor(MAP_W / 2) - 1, 0, { role: 'window', collide: false, cw: 2, ch: 1 })
-  // Clear collision for door walkway under window
-  for (let x = Math.floor(MAP_W / 2) - 1; x <= Math.floor(MAP_W / 2) + 1; x++) {
-    if (x >= 0 && x < MAP_W) collision[0][x] = false
-    if (x >= 0 && x < MAP_W) collision[1][x] = false
-  }
-
-  for (let y = 2; y < MAP_H - 1; y += 2) {
-    place(walls[y % walls.length], 0, y, { role: 'wall', cw: 1, ch: 2 })
-    place(walls[(y + 1) % walls.length], MAP_W - 2, y, { role: 'wall', cw: 1, ch: 2 })
-  }
-
   // Upper desk cluster: 4 cols × 3 rows = 12
   const upperDesks = []
   for (let row = 0; row < 3; row++) {
@@ -92,48 +73,15 @@ function makeLayout(roles) {
   allDesks.forEach(([gx, gy], i) => {
     const frame = desks[i % desks.length]
     place(frame, gx, gy, { role: 'desk', cw: 2, ch: 2 })
-    // spawn south of desk, computer at desk center
+    if (trash) {
+      place(trash, gx + 2, gy, { role: 'trash', collide: false, cw: 1, ch: 1 })
+    }
     const cx = gx * CELL + CELL
     const cy = gy * CELL + CELL
     computers.push({ x: cx, y: cy })
     spawns.push({ x: cx, y: cy + CELL * 1.2 })
   })
 
-  // Mid aisle decorations (dense) around y=10–11
-  const aisleY = 10
-  const aisleItems = [
-    [3, aisleY, plants[0], true],
-    [6, aisleY, shelves[0], true],
-    [9, aisleY, plants[1 % plants.length], true],
-    [12, aisleY, decor[0], true],
-    [15, aisleY, plants[2 % plants.length], true],
-    [18, aisleY, shelves[1 % shelves.length], true],
-    [21, aisleY, plants[0], true],
-    [24, aisleY, decor[1 % decor.length], true],
-    [4, aisleY + 1, plants[3 % plants.length], false],
-    [11, aisleY + 1, plants[1 % plants.length], false],
-    [20, aisleY + 1, plants[2 % plants.length], false],
-  ]
-  for (const [gx, gy, frame, col] of aisleItems) {
-    place(frame, gx, gy, { role: 'decor', collide: col, cw: 1, ch: 1 })
-  }
-
-  // Side plants near walls
-  ;[
-    [2, 6, plants[0]],
-    [MAP_W - 4, 6, plants[1 % plants.length]],
-    [2, 16, plants[2 % plants.length]],
-    [MAP_W - 4, 16, plants[3 % plants.length]],
-  ].forEach(([gx, gy, frame]) => {
-    place(frame, gx, gy, { role: 'plant', cw: 1, ch: 1 })
-  })
-
-  // Small conference nook in lower-right corner of aisle
-  if (conference[0]) {
-    place(conference[0], 20, 8, { role: 'conference', cw: 3, ch: 2 })
-  }
-
-  // Flatten collision for JSON
   const collisionFlat = []
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
@@ -141,12 +89,6 @@ function makeLayout(roles) {
       collisionFlat.push(edge || collision[y][x] ? 1 : 0)
     }
   }
-  // Keep door walkable
-  const doorX = Math.floor(MAP_W / 2)
-  collisionFlat[doorX] = 0
-  collisionFlat[MAP_W + doorX] = 0
-  collisionFlat[MAP_W + doorX - 1] = 0
-  collisionFlat[MAP_W + doorX + 1] = 0
 
   return {
     version: 1,
