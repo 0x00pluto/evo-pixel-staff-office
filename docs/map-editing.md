@@ -146,7 +146,9 @@ Phaser **不支持** map JSON 里的 `source` 外部 tileset，所以运行时�
 2. **`walls` 层** `gid > 0`（兜底），或  
 3. **`collisions` 层** `gid > 0`（补洞）
 
-椅子（如 GID 340）默认不标 `collides`，方便站 spawn。
+椅子（如 GID 340 / local id 18）默认**不**标 `collides`，方便站 spawn；座位瓦片（local 16–19）也不要批量打进 `annotate:collides`。
+
+人物侧：本仓用脚底 **24×16** 盒查格（高对齐 WA 16；宽 24 为办公室视觉余量；见 [`docs/dev-guide.md`](./dev-guide.md)「人物碰撞」），不是整格 32×32，也不是脚底单点。
 
 ### 可选补洞：手刷 `collisions`
 
@@ -190,6 +192,21 @@ WA Inline Map Editor 官方定位是：在**已有地图**上摆家具、画兴�
 | 地图硬约束 | `…/workadventure/docs/map-building/tiled-editor/wa-maps.md` |
 | 进出场景 | `…/workadventure/docs/map-building/tiled-editor/entry-exit.md` |
 | Tiled 入门 | `…/workadventure/docs/map-building/tiled-editor/index.md` |
+| 人物清单（Woka） | `…/workadventure/play/src/pusher/data/woka.json` |
+| 默认完整精灵目录 | `…/workadventure/play/public/resources/characters/pipoya/` |
+| 分层换装目录 | `…/workadventure/play/public/resources/customisation/` |
+| 人物碰撞盒常量 | `…/workadventure/play/src/front/Phaser/Entity/Character.ts`（WA 为 16×16；本仓脚高 16、宽 24） |
+
+### WA 人物资源（对照本仓——学做法，不锁数量）
+
+WA 人物分两套，**帧规格与本仓一致**（32×32、四向、每向 3 帧）。对齐的是这套做法；**皮肤池大小本仓自定**（现 64，可扩），不要把 WA 默认 24 当成上限。
+
+| 套系 | 位置 / 清单 | WA 默认数量 | 说明 |
+|------|-------------|-------------|------|
+| 完整精灵（默认 Woka） | `resources/characters/pipoya/`，`woka.json` → `woka` | **24**（男 12 + 女 12） | Pipoya；加载 `frameWidth/Height: 32` |
+| 分层换装 | `resources/customisation/` | body/eyes/hair/… ≈ **272** 部件 | 本仓**不接**；碰撞盒思路仍脚底 |
+
+本仓：`public/assets/characters.png` = Pipoya **`SKIN_COUNT` 套** atlas（清单 `scripts/pipoya-64-manifest.txt`，常量 [`src/catalog/skinCount.json`](../src/catalog/skinCount.json)）。碰撞盒高 16（WA）× 宽 24（本仓余量）。混用不会导致格子尺寸错位。
 
 只学结构与步骤，**禁止**把 `play/` 后端、聊天、Jitsi、AGPL 源码拷进本仓。完整表见 PRD 00002「参考项目路径」。
 

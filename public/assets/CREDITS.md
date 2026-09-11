@@ -13,7 +13,7 @@
 | `maps/tilesets/*.tsj` | 共享 Tiled tileset（`collides` 一处维护；`pnpm pack:tilesets` 灌进地图） |
 | `maps/tilesets/skins/*.png` | WA starter 皮肤色块（调色板备用，默认未挂进运行时 tileset 列表） |
 | `maps/reference/` | WA starter / chatzone / collections 对照（不进游戏） |
-| `characters.png` | Pipoya 64 套 × 四向 × 3 帧行走 atlas（12 列 × 64 行） |
+| `characters.png` | Pipoya 行走 atlas（**已入库的最终产物**；12 列 × `SKIN_COUNT` 行，现 64）。协作者直接用此文件，无需原包 |
 
 旧 atlas 办公室（`office.png` / `office-layout.json` 等）已从仓库删除。
 
@@ -27,13 +27,17 @@
 pnpm gen:assets   # pack tilesets/*.tsj → 校验图层 / exit / spawn；不覆盖 PNG
 ```
 
-### Pipoya 角色
+### Pipoya 角色（维护者偶发重打）
 
-原包解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA`），清单见 `scripts/pipoya-64-manifest.txt`：
+**日常开发不需要这一步**——仓库已含 `characters.png`。仅当改皮肤清单 / 扩池时：
+
+原包解压到 `temp/vendor/pipoya/`（gitignore，**永不入库**；许可禁止再分发素材本体）或设 `EVO_VENDOR_PIPOYA`。清单见 `scripts/pipoya-64-manifest.txt`（行数须等于 [`src/catalog/skinCount.json`](../src/catalog/skinCount.json) 的 `SKIN_COUNT`）：
 
 ```bash
-pnpm pack:assets   # → characters.png
+pnpm pack:assets   # → 覆盖 characters.png；提交该 PNG 即可，协作者只拉 atlas
 ```
+
+扩池（如 128）：加长 manifest → 改 `skinCount.json` →（可选）`EVO_SKIN_COUNT=128` → `pnpm pack:assets` → 提交新 atlas。对齐的是 WA **帧/碰撞做法**，不是 WA 默认 24 套数量。
 
 ## 署名与许可
 

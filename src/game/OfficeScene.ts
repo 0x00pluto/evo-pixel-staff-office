@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { SKIN_COUNT } from '../catalog/skinCount'
 import type { AgentPersona } from '../catalog/types'
 import { hashPick, nextMode, type AgentRuntime } from './agentFsm'
 import {
@@ -15,7 +16,13 @@ const TILE = 32
 const CHAR_SCALE = 1
 const CELL = TILE * CHAR_SCALE
 const SPEED = 55
-const SKIN_COUNT = 64
+/**
+ * Foot hitbox. Sprite origin is (0.5, 1) = feet center.
+ * Height 16 aligns with WA CHARACTER_BODY_HEIGHT; width 24 is office visual margin
+ * so arms/hair don't paint over wall tiles (WA physics body is 16×16).
+ */
+const BODY_W = 24
+const BODY_H = 16
 
 type Point = { x: number; y: number }
 
@@ -522,6 +529,7 @@ export class OfficeScene extends Phaser.Scene {
           y: entryPoint.y + Math.floor(i / 5) * 8,
         }
       }
+      spawn = this.snapToWalkable(spawn)
 
       const skin = ((persona.skin % SKIN_COUNT) + SKIN_COUNT) % SKIN_COUNT
       const sprite = this.add.sprite(spawn.x, spawn.y, 'characters', skin * 12)
@@ -555,25 +563,81 @@ export class OfficeScene extends Phaser.Scene {
     })
   }
 
-  private walkableWorld(wx: number, wy: number): boolean {
+  /** Cell under a world point is free (map bounds + collision grid). */
+  private cellWalkable(wx: number, wy: number): boolean {
     const tx = Math.floor(wx / this.cell)
     const ty = Math.floor(wy / this.cell)
     if (tx < 0 || ty < 0 || tx >= this.mapW || ty >= this.mapH) return false
     return !this.collision[ty]?.[tx]
   }
 
+  /**
+   * Foot hitbox walkable check.
+   * Origin (0.5, 1): box is [x−BODY_W/2, y−BODY_H] → [x+BODY_W/2, y].
+   * Corners (+ center) must clear.
+   */
+  private walkableWorld(wx: number, wy: number): boolean {
+    const hw = BODY_W / 2
+    const top = wy - BODY_H
+    const samples: Point[] = [
+      { x: wx - hw, y: top },
+      { x: wx + hw, y: top },
+      { x: wx - hw, y: wy },
+      { x: wx + hw, y: wy },
+      { x: wx, y: wy - BODY_H / 2 },
+    ]
+    return samples.every((p) => this.cellWalkable(p.x, p.y))
+  }
+
+  /** Snap feet to nearest cell center where the foot hitbox fits (BFS). */
+  private snapToWalkable(p: Point): Point {
+    if (this.walkableWorld(p.x, p.y)) return p
+    const startTx = Math.floor(p.x / this.cell)
+    const startTy = Math.floor(p.y / this.cell)
+    const seen = new Set<string>()
+    const q: Array<{ tx: number; ty: number }> = [{ tx: startTx, ty: startTy }]
+    seen.add(cellKey(startTx, startTy))
+    const dirs = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ]
+    while (q.length) {
+      const { tx, ty } = q.shift()!
+      const cand = {
+        x: tx * this.cell + this.cell / 2,
+        y: ty * this.cell + this.cell / 2,
+      }
+      if (this.walkableWorld(cand.x, cand.y)) return cand
+      for (const [dx, dy] of dirs) {
+        const nx = tx + dx
+        const ny = ty + dy
+        if (nx < 0 || ny < 0 || nx >= this.mapW || ny >= this.mapH) continue
+        const key = cellKey(nx, ny)
+        if (seen.has(key)) continue
+        seen.add(key)
+        q.push({ tx: nx, ty: ny })
+      }
+    }
+    return p
+  }
+
   private randomWalkTarget(): Point {
     for (let n = 0; n < 40; n++) {
       const tx = 1 + Math.floor(Math.random() * Math.max(1, this.mapW - 2))
       const ty = 1 + Math.floor(Math.random() * Math.max(1, this.mapH - 2))
-      if (!this.collision[ty]?.[tx]) {
-        return {
-          x: tx * this.cell + this.cell / 2,
-          y: ty * this.cell + this.cell / 2,
-        }
+      const cand = {
+        x: tx * this.cell + this.cell / 2,
+        y: ty * this.cell + this.cell / 2,
       }
+      if (this.walkableWorld(cand.x, cand.y)) return cand
     }
-    return { x: 5 * this.cell, y: 5 * this.cell }
+    return this.snapToWalkable({ x: 5 * this.cell, y: 5 * this.cell })
   }
 
   update(_time: number, delta: number) {
@@ -597,8 +661,12 @@ export class OfficeScene extends Phaser.Scene {
         } else if (rt.mode === 'working') {
           const desk = this.workstationFor(id)
           if (desk?.computer) {
-            rt.targetX = desk.computer.x
-            rt.targetY = desk.computer.y + this.cell * 0.9
+            const work = this.snapToWalkable({
+              x: desk.computer.x,
+              y: desk.computer.y + this.cell * 0.9,
+            })
+            rt.targetX = work.x
+            rt.targetY = work.y
           } else {
             rt.mode = 'idle'
           }

@@ -21,27 +21,28 @@ pnpm install
 
 ### 像素素材
 
-办公室世界用 Tiled JSON + 32×32 瓦片（主图视觉对齐 WA starter）：
+仓库已含运行时切片，**clone 后即可开发，无需再下 Pipoya 原包、也无需跑 `pnpm pack:assets`**：
 
-- `public/assets/maps/company-25.json` / `outside-stub.json`
-- `public/assets/maps/tilesets/*.png`（地板在 **tileset1.png**；CC-BY-SA 3.0，见 CREDITS）
+- 地图：`public/assets/maps/company-25.json` / `outside-stub.json` + `tilesets/*.png`（地板在 **tileset1.png**）
+- 角色：`public/assets/characters.png`（已入库的 atlas）
 - 改图指南：[`docs/map-editing.md`](docs/map-editing.md)
-- 校验：`pnpm gen:assets`（**不**覆盖 PNG）
+- 地图校验（可选）：`pnpm gen:assets`（**不**覆盖 PNG）
 
-Pipoya 角色原包解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA`），组装：
+署名与许可见 [`public/assets/CREDITS.md`](public/assets/CREDITS.md)。
 
-```bash
-pnpm pack:assets   # → characters.png
-pnpm gen:assets    # 校验 Tiled 地图；不写 PNG
-```
-
-从 WA starter **重置**主图（覆盖 `company-25.json`）：
+从 WA starter **重置**主图（覆盖 `company-25.json`，维护者偶发）：
 
 ```bash
 pnpm import:wa-company
 ```
 
-署名与许可见 [`public/assets/CREDITS.md`](public/assets/CREDITS.md)。
+#### 维护者：重打角色 atlas（偶发）
+
+仅当改皮肤清单 / 扩池时需要。原包**不要**提交 git（许可禁止再分发素材本体；`temp/` 已 gitignore）。协作者只拉更新后的 `characters.png`。
+
+1. 自备 itch [PIPOYA FREE RPG Character Sprites 32x32](https://pipoya.itch.io/pipoya-free-rpg-character-sprites-32x32)
+2. 解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA=…`）
+3. `pnpm pack:assets` → 覆盖 `public/assets/characters.png` → **提交该 PNG**
 
 ## 开发
 

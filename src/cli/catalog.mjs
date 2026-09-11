@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { SKIN_COUNT } from '../catalog/skinCount.mjs'
 
 function hashString(s) {
   let h = 2166136261
@@ -48,7 +49,7 @@ export function workspaceToPersona(ws) {
           reference: s.reference || '',
         }))
       : [],
-    skin: hashString(id) % 64,
+    skin: hashString(id) % SKIN_COUNT,
     tint: hashString(`${id}:tint`) % 360,
   }
 }

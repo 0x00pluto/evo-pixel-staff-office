@@ -1,4 +1,5 @@
 import type { AgentPersona, CatalogPayload, CatalogSibling } from './types'
+import { SKIN_COUNT } from './skinCount'
 
 /** Raw workspace row from AgentWikiIndex CATALOG.json */
 export interface CatalogWorkspace {
@@ -71,7 +72,7 @@ export function workspaceToPersona(ws: CatalogWorkspace): AgentPersona {
           }),
         )
       : [],
-    skin: hashString(id) % 64,
+    skin: hashString(id) % SKIN_COUNT,
     tint: hashString(`${id}:tint`) % 360,
   }
 }

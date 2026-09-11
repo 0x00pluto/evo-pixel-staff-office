@@ -20,7 +20,7 @@ export interface AgentPersona {
   owns: string[]
   not: string
   siblings: CatalogSibling[]
-  /** 0–63 Pipoya character skin index (hash(id) % 64) */
+  /** Pipoya skin index 0..SKIN_COUNT-1 (hash(id) % SKIN_COUNT); pool size is ours, not WA's 24 */
   skin: number
   /** Deprecated for rendering (R0+); kept for payload stability. Was hue offset 0–359. */
   tint: number

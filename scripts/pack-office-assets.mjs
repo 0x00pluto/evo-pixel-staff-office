@@ -1,24 +1,111 @@
 #!/usr/bin/env node
 /**
- * Assemble characters.png from Pipoya vendor (64 skins).
+ * Assemble characters.png from Pipoya vendor (N skins from manifest).
  * Does NOT touch maps/ or tileset PNGs.
  *
  *   temp/vendor/pipoya/<manifest paths>
- * Env: EVO_VENDOR_PIPOYA
+ * Env:
+ *   EVO_VENDOR_PIPOYA — vendor root (default temp/vendor/pipoya)
+ *   EVO_SKIN_COUNT    — expected manifest lines (default from src/catalog/skinCount.json)
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
+import { SKIN_COUNT as DEFAULT_SKIN_COUNT } from '../src/catalog/skinCount.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.join(__dirname, '..')
 const outDir = path.join(root, 'public', 'assets')
 const TW = 32
 
-const pipoyaDir =
-  process.env.EVO_VENDOR_PIPOYA || path.join(root, 'temp', 'vendor', 'pipoya')
+const waPipoya = path.join(
+  root,
+  '..',
+  '..',
+  '参考项目',
+  'workadventure',
+  'play',
+  'public',
+  'resources',
+  'characters',
+  'pipoya',
+)
+
+function fail(msg) {
+  console.error(msg)
+  process.exit(1)
+}
+
+/**
+ * Primary vendor must be the full itch Pipoya tree (nested Male/Soldier/…).
+ * WA pipoya is only a flat subset — never use it as the pack root.
+ */
+function resolvePipoyaDir() {
+  if (process.env.EVO_VENDOR_PIPOYA) {
+    const p = process.env.EVO_VENDOR_PIPOYA
+    if (!fs.existsSync(p)) {
+      fail(
+        `EVO_VENDOR_PIPOYA 指向的目录不存在:\n  ${p}\n` +
+          `请解压 PIPOYA FREE RPG Character Sprites 32x32 后设置该变量。`,
+      )
+    }
+    return p
+  }
+  const local = path.join(root, 'temp', 'vendor', 'pipoya')
+  let st = null
+  try {
+    st = fs.lstatSync(local)
+  } catch {
+    st = null
+  }
+  if (st?.isSymbolicLink()) {
+    let target = null
+    try {
+      target = fs.realpathSync(local)
+    } catch {
+      target = null
+    }
+    if (!target || !fs.existsSync(target)) {
+      let linkTo = ''
+      try {
+        linkTo = fs.readlinkSync(local)
+      } catch {
+        /* ignore */
+      }
+      fail(
+        `temp/vendor/pipoya 是失效符号链接${linkTo ? ` → ${linkTo}` : ''}。\n` +
+          `请重新解压 itch「PIPOYA FREE RPG Character Sprites 32x32」到该路径，或:\n` +
+          `  EVO_VENDOR_PIPOYA=/path/to/pipoya pnpm pack:assets\n` +
+          `（不要用 WA 的 play/.../pipoya：那里只有扁平子集，没有 Soldier/Enemy。）`,
+      )
+    }
+    return local
+  }
+  if (st && fs.existsSync(local)) return local
+  fail(
+    `Missing Pipoya vendor dir:\n  ${local}\n` +
+      `Place the itch package under temp/vendor/pipoya/ or set EVO_VENDOR_PIPOYA.\n` +
+      `WA play/public/resources/characters/pipoya is not a full substitute for the 64-skin manifest.`,
+  )
+}
+
+const pipoyaDir = resolvePipoyaDir()
 const manifestPath = path.join(__dirname, 'pipoya-64-manifest.txt')
+const expectedSkins = Number(process.env.EVO_SKIN_COUNT || DEFAULT_SKIN_COUNT) || DEFAULT_SKIN_COUNT
+
+/** Resolve manifest path: nested under vendor; optional flat basename under WA as last resort. */
+function resolveSpriteAbs(rel) {
+  const nested = path.join(pipoyaDir, rel)
+  if (fs.existsSync(nested)) return nested
+  const flat = path.join(pipoyaDir, path.basename(rel))
+  if (fs.existsSync(flat)) return flat
+  if (fs.existsSync(waPipoya)) {
+    const waFlat = path.join(waPipoya, path.basename(rel))
+    if (fs.existsSync(waFlat)) return waFlat
+  }
+  return nested
+}
 
 function crc32(buf) {
   let c = ~0
@@ -160,17 +247,6 @@ function blit(dst, dw, src, sw, sx, sy, dx, dy, tw, th) {
   }
 }
 
-function fail(msg) {
-  console.error(msg)
-  process.exit(1)
-}
-
-if (!fs.existsSync(pipoyaDir)) {
-  fail(
-    `Missing Pipoya vendor dir:\n  ${pipoyaDir}\n` +
-      `Place under temp/vendor/pipoya/ or set EVO_VENDOR_PIPOYA.`,
-  )
-}
 if (!fs.existsSync(manifestPath)) {
   fail(`Missing manifest: ${manifestPath}`)
 }
@@ -180,18 +256,25 @@ const lines = fs
   .split(/\r?\n/)
   .map((l) => l.trim())
   .filter((l) => l && !l.startsWith('#'))
-if (lines.length !== 64) {
-  fail(`Manifest must list exactly 64 paths, got ${lines.length}`)
+const N = lines.length
+if (N < 1) {
+  fail(`Manifest has no sprite paths: ${manifestPath}`)
+}
+if (N !== expectedSkins) {
+  fail(
+    `Manifest has ${N} skins but expected ${expectedSkins} (src/catalog/skinCount.json / EVO_SKIN_COUNT).\n` +
+      `To grow the pool: extend the manifest, bump src/catalog/skinCount.json, then pack again.`,
+  )
 }
 
 const atlasW = TW * 12
-const atlasH = TW * 64
+const atlasH = TW * N
 const atlas = Buffer.alloc(atlasW * atlasH * 4)
 
-for (let skin = 0; skin < 64; skin++) {
+for (let skin = 0; skin < N; skin++) {
   const rel = lines[skin]
-  const abs = path.join(pipoyaDir, rel)
-  if (!fs.existsSync(abs)) fail(`Missing Pipoya sprite [${skin}]: ${abs}`)
+  const abs = resolveSpriteAbs(rel)
+  if (!fs.existsSync(abs)) fail(`Missing Pipoya sprite [${skin}]: ${abs} (manifest: ${rel})`)
   const char = decodePng(abs)
   if (char.width !== 96 || char.height !== 128) {
     fail(`Pipoya sprite must be 96x128 (3x4 of 32): ${rel} got ${char.width}x${char.height}`)
@@ -210,5 +293,5 @@ for (let skin = 0; skin < 64; skin++) {
 fs.mkdirSync(outDir, { recursive: true })
 fs.writeFileSync(path.join(outDir, 'characters.png'), encodePng(atlasW, atlasH, atlas))
 console.log('Packed characters.png ->', outDir)
-console.log('  characters: 12x64 @32px (Pipoya 64 skins)')
+console.log(`  characters: 12x${N} @32px (Pipoya ${N} skins; vendor ${pipoyaDir})`)
 console.log('  (maps/tilesets untouched)')

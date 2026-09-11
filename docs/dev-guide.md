@@ -93,7 +93,7 @@ flowchart LR
 - `id` ← `dirname`
 - `name` ← `title` 中破折号（`—` / `–` / `-`）前半段
 - `status` ← `lifecycle === 'experiment'` →「实验中」；否则 `owns[0]` / `blurb` 截断 /「待命」
-- `skin` ← `hash(id) % 64`（Pipoya 64 套皮肤）
+- `skin` ← `hash(id) % SKIN_COUNT`（[`skinCount.json`](../src/catalog/skinCount.json)，现 64）
 - `CatalogSource` 只预留换源接口，本仓**不**实现 SQLite / Postgres
 
 顶栏「刷新花名册」请求 `/api/catalog?refresh=1`，清缓存后重新读 JSON。
@@ -122,22 +122,23 @@ export EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 ### 3. 准备像素素材
 
-仓库内通常已有 [`public/assets/maps/`](../public/assets/maps/)（`company-25.json` 为 ≤25 人 WA 办公室 + tilesets）与 [`CREDITS.md`](../public/assets/CREDITS.md)。改图见 [`map-editing.md`](./map-editing.md)。`characters.png` 需本地组装：
+仓库内已有运行时切片，**日常开发直接用，不要跑 `pnpm pack:assets`**：
 
-1. 从 itch 下载 Pipoya 角色包（**不要**提交 zip/rar）
-2. 解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA`）
-3. 组装与校验：
+- [`public/assets/maps/`](../public/assets/maps/)（`company-25.json`、tilesets）
+- [`public/assets/characters.png`](../public/assets/characters.png)（角色 atlas，已入库）
+- 改图见 [`map-editing.md`](./map-editing.md)
+- 地图校验（可选）：`pnpm gen:assets`（不覆盖 PNG）
 
-```bash
-pnpm pack:assets   # → public/assets/characters.png
-pnpm gen:assets    # 校验 Tiled 地图；不覆盖任何 PNG
-```
-
-从 WA starter 重置主图（覆盖 `company-25.json`）：
+从 WA starter 重置主图（覆盖 `company-25.json`，维护者偶发）：
 
 ```bash
 pnpm import:wa-company
 ```
+
+**仅维护者改皮肤池时**才需要 Pipoya 原包（不入库、不要求每个开发者自备）：
+
+1. itch 下载原包 → 解压到 `temp/vendor/pipoya/`（gitignore）或设 `EVO_VENDOR_PIPOYA`
+2. `pnpm pack:assets` → 提交更新后的 `public/assets/characters.png`
 
 署名与许可见 [`public/assets/CREDITS.md`](../public/assets/CREDITS.md)。
 
@@ -184,7 +185,7 @@ pnpm build
 | `/assets/maps/company-25.json` | 公司主图 ≤25（Tiled） |
 | `/assets/maps/outside-stub.json` | 室外桩图 |
 | `/assets/maps/tilesets/*.png` | 32×32 瓦片 |
-| `/assets/characters.png` | Pipoya 64 套 × 四向 × 3 帧 atlas（12 列 × 64 行） |
+| `/assets/characters.png` | Pipoya atlas：12 列 × `SKIN_COUNT` 行（现 64；帧规格对齐 WA） |
 
 加载失败或未注册 `exitMap` 会走 `onAssetsError`，页面顶部显示提示。相机 bounds 等于当前地图像素尺寸；切图后落到 entry/start，仍可自由拖拽。
 
@@ -201,7 +202,39 @@ pnpm build
 
 ### 小人 FSM
 
-见 [`agentFsm.ts`](../src/game/agentFsm.ts)：`idle` / `wander` / `working` 三种模式随机切换。皮肤索引 `0–63`（`hash(id) % 64`），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。动画 key 形如 `walk-{skin}-{dir}` / `idle-{skin}-{dir}`。
+见 [`agentFsm.ts`](../src/game/agentFsm.ts)：`idle` / `wander` / `working` 三种模式随机切换。皮肤索引 `0…SKIN_COUNT-1`（`hash(id) % SKIN_COUNT`，见 [`skinCount.json`](../src/catalog/skinCount.json)，现 **64**），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。动画 key 形如 `walk-{skin}-{dir}` / `idle-{skin}-{dir}`。
+
+### 人物碰撞（脚底 24×16 盒）
+
+本仓**不开** Phaser Arcade。地图碰撞是 `boolean[][]` 格网（`rebuildCollision`）；走路时用脚底盒四角 + 中心查格，不是脚底单点。
+
+- **高 16**：对齐 WA `CHARACTER_BODY_HEIGHT`（脚）
+- **宽 24**：本仓办公室隔断视觉余量（WA 物理宽是 16；加宽避免胳膊/头发盖住墙瓦）
+- 精灵 `origin (0.5, 1)` 时盒为 `[x−12, y−16]→[x+12, y]`
+- spawn / working 目标若落在阻挡格会 BFS 吸附到最近可走点
+- 人人互撞不做
+
+椅子（如 GID 340）**不**标 `collides`，否则座位卡死；见 [`docs/map-editing.md`](./map-editing.md)。
+
+### 参考项目 WorkAdventure（本机）
+
+| 项 | 值 |
+|---|---|
+| 绝对路径 | `/Users/peng.zhi/Documents/Object/参考项目/workadventure` |
+| 相对本仓 | `../../参考项目/workadventure` |
+| 用途 | 地图分层 / tileset / 进出 / **人物做法** 对照 |
+| 禁止 | 拷贝 `play/` 后端、聊天、Jitsi、AGPL 源码进本仓 |
+
+**对齐 WA 的是「做法」，不是「24 套数量」：**
+
+| 要对齐 | 说明 |
+|---|---|
+| 帧 | 32×32；原图 96×128（3×4）；四向 × 3 帧 |
+| 打包 | Pipoya 式完整精灵 → atlas（`pnpm pack:assets`） |
+| 碰撞思路 | 脚底盒查格（本仓宽 24 / 高 16） |
+| 池大小 | **本仓自定**（现 64，可扩 128）；WA `woka.json` 默认 24 只是对方产品池 |
+
+本仓**不**接 WA 分层换装。扩皮肤：改 `scripts/pipoya-64-manifest.txt` 行数 + [`src/catalog/skinCount.json`](../src/catalog/skinCount.json) + `pnpm pack:assets`。细节见 [`docs/map-editing.md`](./map-editing.md)「WA 人物资源」。
 
 ### React ↔ Phaser
 
@@ -225,7 +258,7 @@ pnpm build
 | 状态文案、皮肤规则、字段映射 | [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) **和** [`src/catalog/mapPersona.ts`](../src/catalog/mapPersona.ts) |
 | 走路、碰撞、相机、切图 | [`src/game/OfficeScene.ts`](../src/game/OfficeScene.ts) + [`mapRegistry.ts`](../src/game/mapRegistry.ts) |
 | 办公室 / 桩图布局 | Tiled 编辑 `public/assets/maps/*.json`；重置主图用 `pnpm import:wa-company` → `pnpm gen:assets` |
-| 角色 atlas / 皮肤清单 | [`scripts/pack-office-assets.mjs`](../scripts/pack-office-assets.mjs) + [`scripts/pipoya-64-manifest.txt`](../scripts/pipoya-64-manifest.txt) → `pnpm pack:assets` |
+| 角色 atlas / 皮肤清单（维护者） | 改 [`scripts/pipoya-64-manifest.txt`](../scripts/pipoya-64-manifest.txt) + [`skinCount.json`](../src/catalog/skinCount.json) → 本机 `pnpm pack:assets` → **提交** `characters.png` |
 | 开发态 API | [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) |
 | 预览 CLI | [`src/cli/run.mjs`](../src/cli/run.mjs) |
 
@@ -249,7 +282,7 @@ pnpm build
 | `pnpm lint` | oxlint |
 | `pnpm preview` | Vite 预览（不含花名册 API；日常用 `pixel-office`） |
 | `pnpm pixel-office` | 构建产物 + `/api/catalog` 一键预览 |
-| `pnpm pack:assets` | vendor → `characters.png` |
+| `pnpm pack:assets` | （维护者偶发）本机 vendor → 覆盖 `characters.png`；日常开发不需要 |
 | `pnpm gen:assets` | pack `tilesets/*.tsj` 后校验 Tiled 地图（不写 PNG） |
 | `pnpm pack:tilesets` | 把共享 `.tsj` 的 collides 灌进地图 JSON |
 | `pnpm annotate:collides` | 批量补 `.tsj` collides 再 pack |
