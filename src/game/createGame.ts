@@ -13,7 +13,7 @@ export function createOfficeGame(
     parent,
     width: parent.clientWidth || window.innerWidth,
     height: parent.clientHeight || Math.max(window.innerHeight - 40, 400),
-    backgroundColor: '#1a1f2b',
+    backgroundColor: '#1B2A41',
     pixelArt: true,
     antialias: false,
     roundPixels: true,

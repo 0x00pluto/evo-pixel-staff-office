@@ -1,15 +1,51 @@
-{
-  "columns": 10,
-  "image": "tileset6_export.png",
-  "imageheight": 320,
-  "imagewidth": 320,
-  "margin": 0,
-  "name": "tileset6_export",
-  "spacing": 0,
-  "tilecount": 100,
-  "tiledversion": "1.12.2",
-  "tileheight": 32,
-  "tilewidth": 32,
-  "type": "tileset",
-  "version": "1.10"
+{ "columns":10,
+ "image":"tileset6_export.png",
+ "imageheight":320,
+ "imagewidth":320,
+ "margin":0,
+ "name":"tileset6_export",
+ "spacing":0,
+ "tilecount":100,
+ "tiledversion":"1.12.2",
+ "tileheight":32,
+ "tiles":[
+        {
+         "id":40,
+         "properties":[
+                {
+                 "name":"collides",
+                 "type":"bool",
+                 "value":true
+                }]
+        }, 
+        {
+         "id":61,
+         "properties":[
+                {
+                 "name":"collides",
+                 "type":"bool",
+                 "value":true
+                }]
+        }, 
+        {
+         "id":70,
+         "properties":[
+                {
+                 "name":"collides",
+                 "type":"bool",
+                 "value":true
+                }]
+        }, 
+        {
+         "id":71,
+         "properties":[
+                {
+                 "name":"collides",
+                 "type":"bool",
+                 "value":true
+                }]
+        }],
+ "tilewidth":32,
+ "type":"tileset",
+ "version":"1.10"
 }

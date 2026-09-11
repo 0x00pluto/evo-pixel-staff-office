@@ -89,7 +89,7 @@ export default function App() {
   }, [applyPayload])
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#1a1f2b]">
+    <div className="relative h-screen w-screen overflow-hidden bg-[#1B2A41]">
       <Toolbar
         agentCount={agents.length}
         sourcePath={sourcePath}

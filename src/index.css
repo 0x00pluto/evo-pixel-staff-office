@@ -29,7 +29,7 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #1a1f2b;
+  background: #1b2a41;
   font-family: var(--hud-font);
   color: var(--hud-text);
 }
@@ -64,6 +64,26 @@ canvas {
 
 .hud-panel--raised {
   background: var(--hud-bg-raised);
+}
+
+/* Overhead nameplate: WA-style translucent pill (not solid hud-panel) */
+.hud-nameplate {
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: rgba(27, 42, 65, 0.5);
+  color: #ffffff;
+  font-family: var(--hud-font);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.55),
+    0 0 2px rgba(0, 0, 0, 0.45);
+}
+
+.hud-nameplate--selected {
+  border-color: var(--hud-border-selected);
+  background: rgba(27, 42, 65, 0.72);
 }
 
 .hud-dot {

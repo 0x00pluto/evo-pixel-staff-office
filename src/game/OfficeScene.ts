@@ -23,6 +23,8 @@ const SPEED = 55
  */
 const BODY_W = 24
 const BODY_H = 16
+/** World px above sprite top so the plate sits fully over the head (WA ≈ 2; we have 2 lines + hats). */
+const NAMEPLATE_GAP = 12
 
 type Point = { x: number; y: number }
 
@@ -86,8 +88,9 @@ export class OfficeScene extends Phaser.Scene {
   private exitZones: ExitZone[] = []
   private exitCooldownUntil = 0
   private switching = false
-  /** Min zoom so the map always covers the viewport (no dark gutters). */
-  private coverZoom = 1
+  /** Min zoom: whole map fits in viewport (contain); gutters OK. */
+  private minZoom = 1
+  private static readonly MAX_ZOOM = 2.2
 
   constructor() {
     super('OfficeScene')
@@ -178,8 +181,8 @@ export class OfficeScene extends Phaser.Scene {
         const cam = this.cameras.main
         const next = Phaser.Math.Clamp(
           cam.zoom - dy * 0.001,
-          this.coverZoom,
-          2.2,
+          this.minZoom,
+          OfficeScene.MAX_ZOOM,
         )
         cam.setZoom(next)
       },
@@ -337,7 +340,7 @@ export class OfficeScene extends Phaser.Scene {
     )
   }
 
-  /** Cover zoom: map fills viewport; never allow zoom-out past gutters. */
+  /** Fit camera: min = contain (full map + blue gutters); initial zoom = cover. */
   private fitCameraToMap(keepRelativeZoom: boolean) {
     const cam = this.cameras.main
     const worldW = this.mapW * this.cell
@@ -346,18 +349,18 @@ export class OfficeScene extends Phaser.Scene {
 
     const viewW = cam.width || this.scale.width || 1
     const viewH = cam.height || this.scale.height || 1
-    this.coverZoom = Math.max(viewW / worldW, viewH / worldH)
+    this.minZoom = Math.min(viewW / worldW, viewH / worldH)
+    const coverZoom = Math.max(viewW / worldW, viewH / worldH)
 
     if (!keepRelativeZoom) {
-      cam.setZoom(this.coverZoom)
+      cam.setZoom(coverZoom)
       cam.centerOn(worldW / 2, worldH / 2)
       return
     }
 
     const midX = cam.scrollX + viewW / (2 * cam.zoom)
     const midY = cam.scrollY + viewH / (2 * cam.zoom)
-    const next = Math.max(cam.zoom, this.coverZoom)
-    cam.setZoom(Phaser.Math.Clamp(next, this.coverZoom, 2.2))
+    cam.setZoom(Phaser.Math.Clamp(cam.zoom, this.minZoom, OfficeScene.MAX_ZOOM))
     cam.centerOn(midX, midY)
   }
 
@@ -704,6 +707,11 @@ export class OfficeScene extends Phaser.Scene {
 
       const sx = (sprite.x - cam.worldView.x) * cam.zoom
       const sy = (sprite.y - cam.worldView.y) * cam.zoom
+      // Origin is feet (0.5, 1); lift by scaled sprite height + gap, then * zoom for screen px.
+      const headLift = (sprite.displayHeight + NAMEPLATE_GAP) * cam.zoom
+      const viewW = cam.width || this.scale.width || 1
+      const viewH = cam.height || this.scale.height || 1
+      const margin = 60 * cam.zoom
 
       plates.push({
         id,
@@ -711,12 +719,13 @@ export class OfficeScene extends Phaser.Scene {
         status: rt.persona.status,
         lifecycle: rt.persona.lifecycle,
         screenX: sx,
-        screenY: sy - TILE * CHAR_SCALE,
+        screenY: sy - headLift,
+        // Compare screen coords to viewport pixels (cam.width), not displayWidth (world width / zoom).
         visible:
-          sx > -60 &&
-          sy > -60 &&
-          sx < (cam.displayWidth || cam.width) + 60 &&
-          sy < (cam.displayHeight || cam.height) + 60,
+          sx > -margin &&
+          sy > -margin &&
+          sx < viewW + margin &&
+          sy < viewH + margin,
       })
     }
 
