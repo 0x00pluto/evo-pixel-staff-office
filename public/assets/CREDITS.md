@@ -7,9 +7,10 @@
 | 文件 / 目录 | 说明 |
 |---|---|
 | `maps/company-25.json` | 公司主图（≤25 人，WA starter 静态桌） |
-| `maps/outside-stub.json` | 室外/园区桩图（往返办公室） |
-| `maps/registry.json` | 地图 id 注册表（与 `src/game/mapRegistry.ts` 对齐） |
+| `maps/world-map.json` | 世界园区图（本地测试导入自 wa-village；不显示员工） |
+| `maps/registry.json` | 地图 id 注册表（与 `src/game/mapRegistry.ts` 对齐；含 `kind`） |
 | `maps/tilesets/*.png` | WA 风 32×32 瓦片图（地板在 **tileset1.png**；CC-BY-SA 3.0） |
+| `maps/tilesets/village/` | 园区瓦片（`pnpm import:wa-world`；本地测试） |
 | `maps/tilesets/*.tsj` | 共享 Tiled tileset（`collides` 一处维护；`pnpm pack:tilesets` 灌进地图） |
 | `maps/tilesets/skins/*.png` | WA starter 皮肤色块（调色板备用，默认未挂进运行时 tileset 列表） |
 | `maps/reference/` | WA starter / chatzone / collections 对照（不进游戏） |
@@ -48,7 +49,16 @@ pnpm pack:assets   # → 覆盖 characters.png；提交该 PNG 即可，协作�
 - 许可：[CC-BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/)
 - 约束：衍生地图须 share-alike；**禁止**将瓦片作为独立素材包再分发；本仓库仅含游戏切片与自绘布局 JSON，**未**复制 WorkAdventure `play/` 后端或 AGPL 源码。
 
-`company-25` 视觉层基于 WA starter `maps/starter/map.json`（CC-BY-SA）；本仓追加 exit / 命名入口 / objects。`outside-stub` 为自绘桩图。未复制 WorkAdventure `play/` AGPL 源码；`reference/collections/` 仅供对照。
+`company-25` 视觉层基于 WA starter `maps/starter/map.json`（CC-BY-SA）；本仓追加 exit / 命名入口 / objects。未复制 WorkAdventure `play/` AGPL 源码；`reference/collections/` 仅供对照。
+
+### WA Village 世界图（本地测试导入）
+
+- 地图：`maps/world-map.json`（由 `pnpm import:wa-world` 自 [`wa-headquarters.tmj`](https://github.com/workadventure/wa-village) 改写）
+- 瓦片：`maps/tilesets/village/`（仅运行所需 PNG；**未**拷贝 `src/` 脚本、`scavenger/`、季节变体整包）
+- 本机参考根：`/Users/peng.zhi/Documents/Object/参考项目/wa-village`（相对本仓 `../../参考项目/wa-village`）
+- 许可：见对方仓库 `LICENSE.map` / `LICENSE.assets`；地图属性注明 **100 Roads / WA-only** 条款
+- **用途：本地测试导入。** 公开 git / 商用前须换图或取得授权（开放项，不挡本期预览）
+- 查法约定：[`docs/wa-reference.md`](../../docs/wa-reference.md)
 
 ### PIPOYA FREE RPG Character Sprites 32x32
 

@@ -1,5 +1,7 @@
 /** Static map id → Tiled JSON path. Exit targets must be registered here. */
 
+export type MapKind = 'office' | 'world'
+
 export interface MapEntry {
   id: string
   /** Absolute URL path served from public/ */
@@ -7,6 +9,11 @@ export interface MapEntry {
   label: string
   /** Soft headcount this art is sized for (documentation / future select). */
   headcountMax?: number
+  /**
+   * office = spawn agents; world = park overview, no agents.
+   * Missing kind defaults to office.
+   */
+  kind?: MapKind
 }
 
 export interface TilesetEntry {
@@ -31,16 +38,19 @@ export const MAP_REGISTRY: Record<string, MapEntry> = {
     json: '/assets/maps/company-25.json',
     label: 'Office (≤25)',
     headcountMax: 25,
+    kind: 'office',
   },
-  'outside-stub': {
-    id: 'outside-stub',
-    json: '/assets/maps/outside-stub.json',
-    label: 'Outside plaza stub',
+  'world-map': {
+    id: 'world-map',
+    json: '/assets/maps/world-map.json',
+    label: 'World map (WA Village HQ)',
+    kind: 'world',
   },
 }
 
 export const DEFAULT_MAP_ID = 'company-25'
 
+/** Office tilesets + village tilesets (from pnpm import:wa-world). */
 export const TILESET_ASSETS: TilesetEntry[] = [
   {
     name: 'tileset5_export',
@@ -67,10 +77,174 @@ export const TILESET_ASSETS: TilesetEntry[] = [
     key: 'ts_Special_Zones',
     url: '/assets/maps/tilesets/Special_Zones.png',
   },
+  {
+    name: 'learning-lab',
+    key: 'ts_village_learning-lab',
+    url: '/assets/maps/tilesets/village/learning-lab.png',
+  },
+  {
+    name: 'meeting-rooms',
+    key: 'ts_village_meeting-rooms',
+    url: '/assets/maps/tilesets/village/meeting-rooms.png',
+  },
+  {
+    name: 'fountain-sculptures',
+    key: 'ts_village_fountain-sculptures',
+    url: '/assets/maps/tilesets/village/fountain-sculptures.png',
+  },
+  {
+    name: 'WA_Special_Zones',
+    key: 'ts_village_WA_Special_Zones',
+    url: '/assets/maps/tilesets/village/WA_Special_Zones.png',
+  },
+  {
+    name: 'fire',
+    key: 'ts_village_fire',
+    url: '/assets/maps/tilesets/village/fire.png',
+  },
+  {
+    name: 'mini-trees',
+    key: 'ts_village_mini-trees',
+    url: '/assets/maps/tilesets/village/mini-trees.png',
+  },
+  {
+    name: 'art-gallery',
+    key: 'ts_village_art-gallery',
+    url: '/assets/maps/tilesets/village/art-gallery.png',
+  },
+  {
+    name: 'white-rugs',
+    key: 'ts_village_white-rugs',
+    url: '/assets/maps/tilesets/village/white-rugs.png',
+  },
+  {
+    name: 'grounds-assets',
+    key: 'ts_village_grounds-assets',
+    url: '/assets/maps/tilesets/village/grounds-assets.png',
+  },
+  {
+    name: 'tables',
+    key: 'ts_village_tables',
+    url: '/assets/maps/tilesets/village/tables.png',
+  },
+  {
+    name: 'decor',
+    key: 'ts_village_decor',
+    url: '/assets/maps/tilesets/village/decor.png',
+  },
+  {
+    name: 'bookshelves',
+    key: 'ts_village_bookshelves',
+    url: '/assets/maps/tilesets/village/bookshelves.png',
+  },
+  {
+    name: 'trees-shadow',
+    key: 'ts_village_trees-shadow',
+    url: '/assets/maps/tilesets/village/trees-shadow.png',
+  },
+  {
+    name: 'office-building',
+    key: 'ts_village_office-building',
+    url: '/assets/maps/tilesets/village/office-building.png',
+  },
+  {
+    name: 'auditorium',
+    key: 'ts_village_auditorium',
+    url: '/assets/maps/tilesets/village/auditorium.png',
+  },
+  {
+    name: 'wa-logos',
+    key: 'ts_village_wa-logos',
+    url: '/assets/maps/tilesets/village/wa-logos.png',
+  },
+  {
+    name: 'art-for-gallery',
+    key: 'ts_village_art-for-gallery',
+    url: '/assets/maps/tilesets/village/art-for-gallery.png',
+  },
+  {
+    name: 'ducks',
+    key: 'ts_village_ducks',
+    url: '/assets/maps/tilesets/village/ducks.png',
+  },
+  {
+    name: 'overlay-village',
+    key: 'ts_village_overlay-village',
+    url: '/assets/maps/tilesets/village/overlay-village.png',
+  },
+  {
+    name: 'signup-WA',
+    key: 'ts_village_signup-WA',
+    url: '/assets/maps/tilesets/village/signup-WA.png',
+  },
+  {
+    name: 'flags',
+    key: 'ts_village_flags',
+    url: '/assets/maps/tilesets/village/flags.png',
+  },
+  {
+    name: 'GroundWorld',
+    key: 'ts_village_GroundWorld',
+    url: '/assets/maps/tilesets/village/GroundWorld.png',
+  },
+  {
+    name: 'AboveWorld',
+    key: 'ts_village_AboveWorld',
+    url: '/assets/maps/tilesets/village/AboveWorld.png',
+  },
+  {
+    name: 'logos',
+    key: 'ts_village_logos',
+    url: '/assets/maps/tilesets/village/giving-tuesday/logos.png',
+  },
+  {
+    name: 'Giving_Tuesday_Tileset',
+    key: 'ts_village_Giving_Tuesday_Tileset',
+    url: '/assets/maps/tilesets/village/giving-tuesday/Giving_Tuesday_Tileset.png',
+  },
+  {
+    name: 'while-wa-flatoffice',
+    key: 'ts_village_while-wa-flatoffice',
+    url: '/assets/maps/tilesets/village/while-wa-flatoffice.png',
+  },
+  {
+    name: 'chairs',
+    key: 'ts_village_chairs',
+    url: '/assets/maps/tilesets/village/chairs.png',
+  },
+  {
+    name: 'couches',
+    key: 'ts_village_couches',
+    url: '/assets/maps/tilesets/village/couches.png',
+  },
+  {
+    name: 'decor-rugs-1',
+    key: 'ts_village_decor-rugs-1',
+    url: '/assets/maps/tilesets/village/decor-rugs-1.png',
+  },
+  {
+    name: 'puffs',
+    key: 'ts_village_puffs',
+    url: '/assets/maps/tilesets/village/puffs.png',
+  },
+  {
+    name: '100R_Stage',
+    key: 'ts_village_100R_Stage',
+    url: '/assets/maps/tilesets/village/100R_Stage.png',
+  },
+  {
+    name: 'overlay-winter',
+    key: 'ts_village_overlay-winter',
+    url: '/assets/maps/tilesets/village/overlay-winter.png',
+  },
 ]
 
 export function getMapEntry(id: string): MapEntry | undefined {
   return MAP_REGISTRY[id]
+}
+
+export function getMapKind(id: string): MapKind {
+  return getMapEntry(id)?.kind ?? 'office'
 }
 
 export function isRegisteredMapId(id: string): boolean {

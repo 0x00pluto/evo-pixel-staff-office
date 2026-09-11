@@ -1,0 +1,15 @@
+{
+  "columns": 200,
+  "image": "overlay-winter.png",
+  "imageheight": 3840,
+  "imagewidth": 6400,
+  "margin": 0,
+  "name": "overlay-winter",
+  "spacing": 0,
+  "tilecount": 24000,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

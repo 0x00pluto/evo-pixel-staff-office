@@ -1,0 +1,15 @@
+{
+  "columns": 31,
+  "image": "decor-rugs-1.png",
+  "imageheight": 1120,
+  "imagewidth": 1023,
+  "margin": 0,
+  "name": "decor-rugs-1",
+  "spacing": 0,
+  "tilecount": 1085,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

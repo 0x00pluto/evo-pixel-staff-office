@@ -1,0 +1,15 @@
+{
+  "columns": 177,
+  "image": "meeting-rooms.png",
+  "imageheight": 1504,
+  "imagewidth": 5664,
+  "margin": 0,
+  "name": "meeting-rooms",
+  "spacing": 0,
+  "tilecount": 8319,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

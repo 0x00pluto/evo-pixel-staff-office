@@ -1,0 +1,15 @@
+{
+  "columns": 50,
+  "image": "puffs.png",
+  "imageheight": 1601,
+  "imagewidth": 1603,
+  "margin": 0,
+  "name": "puffs",
+  "spacing": 0,
+  "tilecount": 2500,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

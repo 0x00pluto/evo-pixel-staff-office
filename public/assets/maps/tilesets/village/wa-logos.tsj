@@ -1,0 +1,15 @@
+{
+  "columns": 25,
+  "image": "wa-logos.png",
+  "imageheight": 800,
+  "imagewidth": 800,
+  "margin": 0,
+  "name": "wa-logos",
+  "spacing": 0,
+  "tilecount": 625,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

@@ -1,0 +1,15 @@
+{
+  "columns": 136,
+  "image": "learning-lab.png",
+  "imageheight": 2688,
+  "imagewidth": 4352,
+  "margin": 0,
+  "name": "learning-lab",
+  "spacing": 0,
+  "tilecount": 11424,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

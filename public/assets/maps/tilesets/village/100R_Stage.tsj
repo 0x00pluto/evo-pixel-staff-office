@@ -1,0 +1,15 @@
+{
+  "columns": 20,
+  "image": "100R_Stage.png",
+  "imageheight": 567,
+  "imagewidth": 640,
+  "margin": 0,
+  "name": "100R_Stage",
+  "spacing": 0,
+  "tilecount": 340,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

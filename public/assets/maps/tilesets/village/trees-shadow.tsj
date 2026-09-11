@@ -1,0 +1,15 @@
+{
+  "columns": 50,
+  "image": "trees-shadow.png",
+  "imageheight": 961,
+  "imagewidth": 1603,
+  "margin": 0,
+  "name": "trees-shadow",
+  "spacing": 0,
+  "tilecount": 1500,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

@@ -1,0 +1,15 @@
+{
+  "columns": 21,
+  "image": "mini-trees.png",
+  "imageheight": 960,
+  "imagewidth": 672,
+  "margin": 0,
+  "name": "mini-trees",
+  "spacing": 0,
+  "tilecount": 630,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

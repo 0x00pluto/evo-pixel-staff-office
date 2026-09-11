@@ -1,0 +1,15 @@
+{
+  "columns": 51,
+  "image": "chairs.png",
+  "imageheight": 1080,
+  "imagewidth": 1632,
+  "margin": 0,
+  "name": "chairs",
+  "spacing": 0,
+  "tilecount": 1683,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

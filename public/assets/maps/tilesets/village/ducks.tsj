@@ -1,0 +1,85 @@
+{
+  "columns": 16,
+  "image": "ducks.png",
+  "imageheight": 290,
+  "imagewidth": 512,
+  "margin": 0,
+  "name": "ducks",
+  "spacing": 0,
+  "tilecount": 144,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10",
+  "tiles": [
+    {
+      "animation": [
+        {
+          "duration": 350,
+          "tileid": 17
+        },
+        {
+          "duration": 350,
+          "tileid": 20
+        },
+        {
+          "duration": 350,
+          "tileid": 23
+        }
+      ],
+      "id": 17
+    },
+    {
+      "animation": [
+        {
+          "duration": 350,
+          "tileid": 18
+        },
+        {
+          "duration": 350,
+          "tileid": 21
+        },
+        {
+          "duration": 350,
+          "tileid": 24
+        }
+      ],
+      "id": 18
+    },
+    {
+      "animation": [
+        {
+          "duration": 350,
+          "tileid": 49
+        },
+        {
+          "duration": 350,
+          "tileid": 52
+        },
+        {
+          "duration": 350,
+          "tileid": 55
+        }
+      ],
+      "id": 49
+    },
+    {
+      "animation": [
+        {
+          "duration": 350,
+          "tileid": 50
+        },
+        {
+          "duration": 350,
+          "tileid": 53
+        },
+        {
+          "duration": 350,
+          "tileid": 56
+        }
+      ],
+      "id": 50
+    }
+  ]
+}

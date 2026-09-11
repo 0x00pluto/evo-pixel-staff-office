@@ -1,0 +1,83 @@
+{
+  "columns": 22,
+  "image": "fire.png",
+  "imageheight": 640,
+  "imagewidth": 704,
+  "margin": 0,
+  "name": "fire",
+  "spacing": 0,
+  "tilecount": 440,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10",
+  "tiles": [
+    {
+      "animation": [
+        {
+          "duration": 100,
+          "tileid": 112
+        },
+        {
+          "duration": 100,
+          "tileid": 156
+        },
+        {
+          "duration": 100,
+          "tileid": 200
+        },
+        {
+          "duration": 100,
+          "tileid": 244
+        },
+        {
+          "duration": 100,
+          "tileid": 288
+        },
+        {
+          "duration": 100,
+          "tileid": 332
+        },
+        {
+          "duration": 100,
+          "tileid": 376
+        }
+      ],
+      "id": 112
+    },
+    {
+      "animation": [
+        {
+          "duration": 100,
+          "tileid": 134
+        },
+        {
+          "duration": 100,
+          "tileid": 178
+        },
+        {
+          "duration": 100,
+          "tileid": 222
+        },
+        {
+          "duration": 100,
+          "tileid": 266
+        },
+        {
+          "duration": 100,
+          "tileid": 310
+        },
+        {
+          "duration": 100,
+          "tileid": 354
+        },
+        {
+          "duration": 100,
+          "tileid": 398
+        }
+      ],
+      "id": 134
+    }
+  ]
+}

@@ -166,7 +166,7 @@ const exitLayer = {
   x: 0,
   y: 0,
   properties: [
-    { name: 'exitMap', type: 'string', value: 'outside-stub' },
+    { name: 'exitMap', type: 'string', value: 'world-map' },
     { name: 'entryName', type: 'string', value: 'from-office' },
   ],
 }

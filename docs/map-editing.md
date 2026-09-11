@@ -1,8 +1,8 @@
 # 办公室地图编辑指南
 
-面向美术与工程师：用 **Tiled** 可视化改本仓办公室 / 室外桩图，保存后本地预览即可看到效果。不依赖 Agent 重算布局，也不使用 WorkAdventure 在线编辑器。
+面向美术与工程师：用 **Tiled** 可视化改本仓办公室 / 世界园区图，保存后本地预览即可看到效果。不依赖 Agent 重算布局，也不使用 WorkAdventure 在线编辑器。
 
-产品规格见 [`specs/prds/prd-00002-tiled-office-world.md`](../specs/prds/prd-00002-tiled-office-world.md)。
+产品规格见 [`specs/prds/prd-00002-tiled-office-world.md`](../specs/prds/prd-00002-tiled-office-world.md)（办公室）与 [`specs/prds/prd-00004-world-map.md`](../specs/prds/prd-00004-world-map.md)（世界图）。
 
 ## 需要什么工具
 
@@ -23,9 +23,10 @@
 | 路径 | 说明 |
 |------|------|
 | [`public/assets/maps/company-25.json`](../public/assets/maps/company-25.json) | **主图（≤25 人）** WA starter 静态桌 + exit/入口/objects |
-| [`public/assets/maps/outside-stub.json`](../public/assets/maps/outside-stub.json) | 室外/园区桩图（出门往返） |
-| [`public/assets/maps/registry.json`](../public/assets/maps/registry.json) | map id → JSON 路径；exit 只引用 id |
-| [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | 瓦片调色板（地板在 **tileset1.png**；另有 skins/） |
+| [`public/assets/maps/world-map.json`](../public/assets/maps/world-map.json) | **世界园区图**（出门往返；`kind: world`；本地测试导入自 wa-village） |
+| [`public/assets/maps/registry.json`](../public/assets/maps/registry.json) | map id → JSON 路径 + `kind`；exit 只引用 id |
+| [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | 办公室瓦片调色板（地板在 **tileset1.png**；另有 skins/） |
+| [`public/assets/maps/tilesets/village/`](../public/assets/maps/tilesets/village/) | 园区瓦片 PNG + **共享 `*.tsj`**（`pnpm import:wa-world`） |
 | [`public/assets/maps/reference/`](../public/assets/maps/reference/) | WA starter / chatzone / collections 对照（不进游戏） |
 | [`public/assets/maps/maps.tiled-project`](../public/assets/maps/maps.tiled-project) | 可选：Tiled 工程入口 |
 | [`public/assets/maps/README.md`](../public/assets/maps/README.md) | 工作区一页纸 |
@@ -87,30 +88,35 @@
 
 ## 图层约定（WA 视觉 + 本仓必需）
 
-`pnpm gen:assets` 至少要求：`floor`、`walls`、`furniture`、`collisions`、`start`、`exit`。
+`pnpm gen:assets` 按 `kind` 分档：
+
+- **office**（如 `company-25`）：至少 `floor`、`walls`、`furniture`、`collisions`、`start`、`exit`。
+- **world**（如 `world-map`）：至少 `collisions`、`start`、`exit`；**不**要求 walls/furniture/objects。视觉层用 Village 命名（`GroundWorld`、`AboveWorld`、`roof*` 等）。
 
 | 图层名 | 来源 | 美术可改？ | 作用 |
 |--------|------|------------|------|
-| `floor` | WA | 可 | 地板（用 **tileset1**） |
-| `walls` | WA | 可 | 外墙 / 隔断 |
-| `furniture` | WA | 可 | 桌椅等（角色下方） |
+| `floor` | WA | 可 | 地板（用 **tileset1**；办公室） |
+| `GroundWorld` | Village | 可 | 园区地面（世界图） |
+| `walls` | WA | 可 | 外墙 / 隔断（办公室） |
+| `furniture` | WA | 可 | 桌椅等（角色下方；办公室） |
 | `aboveFurniture` | WA | 可 | 家具上方装饰 |
-| `abovePlayer1`…`3` | WA | 可 | 盖在角色之上 |
+| `abovePlayer1`…`3` / `AboveWorld*` / `roof*` | WA / Village | 可 | 盖在角色之上（世界图无角色仍渲染） |
 | `floorLayer` | WA | 慎改 | WA objectgroup；本仓可不依赖 |
-| `collisions` | WA | **必查** | 有瓦不可走 |
-| `start` | WA | 慎改 | 默认出生 |
-| `office-door` | 本仓 | 慎改 | 命名入口 `startLayer=true` |
+| `collisions` | 本仓约定 | **必查** | 有瓦不可走（世界图由 `collision` 改名） |
+| `start` | WA / 本仓 | 慎改 | 默认出生 / 落点 |
+| `office-door` | 本仓 | 慎改 | 命名入口 `startLayer=true`（办公室） |
+| `from-office` | 本仓 | 慎改 | 出门落点（世界图） |
 | `exit` | 本仓 | 慎改 | 切图；`exitMap` + `entryName` |
-| `objects` | 本仓 | 可 | `spawn_*` / `computer_*`（company-25 ≥25） |
+| `objects` | 本仓 | 可 | `spawn_*` / `computer_*`（company-25 ≥25；世界图不需要） |
 
-Jitsi / clock 等 WA 功能层**不导入**（本仓非目标）。
+Jitsi / clock / website / audio 等 WA 功能层**不导入**（本仓非目标）。
 
 ### exit 层属性（本仓，不是 WA 的 exitUrl）
 
 | 地图 | 层属性 | 含义 |
 |------|--------|------|
-| `company-25` 的 `exit` | `exitMap=outside-stub`，`entryName=from-office` | 出门 → 桩图的 `from-office` |
-| `outside-stub` 的 `exit` | `exitMap=company-25`，`entryName=office-door` | 回来 → 办公室门口 |
+| `company-25` 的 `exit` | `exitMap=world-map`，`entryName=from-office` | 出门 → 园区的 `from-office` |
+| `world-map` 的 `exit` | `exitMap=company-25`，`entryName=office-door` | 回来 → 办公室门口 |
 
 `exitMap` 必须是 [`registry.json`](../public/assets/maps/registry.json) 里已有的 id。不要写公网 URL。
 
@@ -134,9 +140,27 @@ Jitsi / clock 等 WA 功能层**不导入**（本仓非目标）。
 |------|-------------|
 | 批量补常用墙/会议桌 collides | `pnpm annotate:collides`（写 `.tsj` 再 pack） |
 | 手改 collides | Tiled → File → Open → 打开某个 `tilesets/*.tsj` → Custom Properties 加 `collides` bool |
+| Tiled 改图（避免 tileset 成对） | `pnpm unpack:tilesets` → 打开地图 → Save → `pnpm gen:assets` |
 | 灌进各地图给 Phaser | `pnpm pack:tilesets`（`gen:assets` 会自动先跑） |
 
-Phaser **不支持** map JSON 里的 `source` 外部 tileset，所以运行时地图必须是 **pack 后的 embedded** 形态。
+Phaser **不支持** map JSON 里的 `source` 外部 tileset，所以预览 / 构建前必须 **pack 成 embedded**。
+
+#### 为什么 Tiled 里 tileset「一对一对」？
+
+常见两种原因：
+
+1. **地图里挂了两份同名 tileset**（一份 embedded，又 `Add External Tileset` 加了同名 `.tsj`）。本仓 `pack` 会丢掉重名；请 **关闭 Tiled 后重新打开** `company-25.json`（Tiled 不会自动丢掉内存里的旧副本）。
+2. **顶栏 Tab 打开了两份**：一份是地图里的 embedded tileset，一份是工程里的 `tilesets/*.tsj`。改 `collides` 时 **只打开 `.tsj` 文件**，不要再双击地图里的 tileset 面板。
+
+正确改图顺序：
+
+```bash
+pnpm unpack:tilesets   # 地图改回 source → .tsj（Tiled 只显示一份）
+# Tiled 打开 company-25.json / 改 .tsj → Save
+pnpm gen:assets        # pack + 校验，供 Phaser 预览
+```
+
+**不要**对已经在地图上的 tileset 再点 `Add External Tileset...`。村庄装饰请优先在 `world-map` 上改，避免往 `company-25` 里乱加 `tilesets/village/*.tsj`。
 
 ### 运行时规则（本仓）
 
@@ -148,7 +172,7 @@ Phaser **不支持** map JSON 里的 `source` 外部 tileset，所以运行时�
 
 椅子（如 GID 340 / local id 18）默认**不**标 `collides`，方便站 spawn；座位瓦片（local 16–19）也不要批量打进 `annotate:collides`。
 
-人物侧：本仓用脚底 **24×16** 盒查格（高对齐 WA 16；宽 24 为办公室视觉余量；见 [`docs/dev-guide.md`](./dev-guide.md)「人物碰撞」），不是整格 32×32，也不是脚底单点。
+人物侧：本仓用脚底 **24×24** 盒查格（高 24 防贴桌 overhang；宽 24 为办公室视觉余量；见 [`docs/dev-guide.md`](./dev-guide.md)「人物碰撞」），不是整格 32×32，也不是脚底单点。
 
 ### 可选补洞：手刷 `collisions`
 
@@ -157,9 +181,10 @@ Phaser **不支持** map JSON 里的 `source` 外部 tileset，所以运行时�
 ## 出门 / 回来怎么验
 
 1. `pnpm dev` 打开大屏，拖到公司大门附近  
-2. 等小人踩上 `exit` 瓦片 → 应切到 `outside-stub`，镜头落到 `from-office` / `start`  
-3. 再踩桩图 `exit` → 应回到 `company-25` 的 **`office-door`**，而不是办公室中心  
+2. 点大门 `exit` 瓦片（或等小人踩上）→ 应切到 `world-map`，镜头落到 `from-office` / `start`；**无员工精灵、无名牌**  
+3. 再点园区办公楼门 `exit` → 应回到 `company-25` 的 **`office-door`**，员工重新 spawn  
 4. 若黑屏或报「地图未注册」：检查 `exit` 层的 `exitMap` 是否在 `registry.json` 中  
+5. 重置世界图：`pnpm import:wa-world`（需本机有 [`docs/wa-reference.md`](./wa-reference.md) 中的 wa-village 路径） 
 
 概念参考（字段名用本仓 `exitMap` / `entryName`）：
 
@@ -179,10 +204,12 @@ WA Inline Map Editor 官方定位是：在**已有地图**上摆家具、画兴�
 
 ## 参考路径速查（结构学习用）
 
+查 WA **先用 Codebase Memory MCP**（项目名 `workadventure` / `wa-village`），MCP 不可用或图缺口（如 `docs/`、`maps/assets/`、`play/public/`、`tilesets/` PNG）再读本机文件；约定见 [`docs/wa-reference.md`](./wa-reference.md)。
+
 参考项目根（本机）：
 
-- 绝对路径：`/Users/peng.zhi/Documents/Object/参考项目/workadventure`  
-- 相对本仓根：`../../参考项目/workadventure`
+- 引擎仓：`/Users/peng.zhi/Documents/Object/参考项目/workadventure`（相对本仓 `../../参考项目/workadventure`）
+- Village（大图 / tilesets 对照）：`/Users/peng.zhi/Documents/Object/参考项目/wa-village`（相对本仓 `../../参考项目/wa-village`）；查法见 [`docs/wa-reference.md`](./wa-reference.md)
 
 | 用途 | 绝对路径 |
 |------|----------|
@@ -195,7 +222,7 @@ WA Inline Map Editor 官方定位是：在**已有地图**上摆家具、画兴�
 | 人物清单（Woka） | `…/workadventure/play/src/pusher/data/woka.json` |
 | 默认完整精灵目录 | `…/workadventure/play/public/resources/characters/pipoya/` |
 | 分层换装目录 | `…/workadventure/play/public/resources/customisation/` |
-| 人物碰撞盒常量 | `…/workadventure/play/src/front/Phaser/Entity/Character.ts`（WA 为 16×16；本仓脚高 16、宽 24） |
+| 人物碰撞盒常量 | `…/workadventure/play/src/front/Phaser/Entity/Character.ts`（WA 为 16×16；本仓脚高 24、宽 24） |
 
 ### WA 人物资源（对照本仓——学做法，不锁数量）
 
@@ -206,7 +233,7 @@ WA 人物分两套，**帧规格与本仓一致**（32×32、四向、每向 3 �
 | 完整精灵（默认 Woka） | `resources/characters/pipoya/`，`woka.json` → `woka` | **24**（男 12 + 女 12） | Pipoya；加载 `frameWidth/Height: 32` |
 | 分层换装 | `resources/customisation/` | body/eyes/hair/… ≈ **272** 部件 | 本仓**不接**；碰撞盒思路仍脚底 |
 
-本仓：`public/assets/characters.png` = Pipoya **`SKIN_COUNT` 套** atlas（清单 `scripts/pipoya-64-manifest.txt`，常量 [`src/catalog/skinCount.json`](../src/catalog/skinCount.json)）。碰撞盒高 16（WA）× 宽 24（本仓余量）。混用不会导致格子尺寸错位。
+本仓：`public/assets/characters.png` = Pipoya **`SKIN_COUNT` 套** atlas（清单 `scripts/pipoya-64-manifest.txt`，常量 [`src/catalog/skinCount.json`](../src/catalog/skinCount.json)）。碰撞盒高 24 × 宽 24（本仓余量；WA 脚高为 16）。混用不会导致格子尺寸错位。
 
 只学结构与步骤，**禁止**把 `play/` 后端、聊天、Jitsi、AGPL 源码拷进本仓。完整表见 PRD 00002「参考项目路径」。
 

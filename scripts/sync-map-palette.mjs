@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Sync WorkAdventure maps/assets tileset PNGs into public/assets/maps/tilesets/.
- * Does NOT touch company-25.json / outside-stub.json / registry.json.
+ * Does NOT touch company-25.json / world-map.json / registry.json.
  *
  * Usage:
  *   node scripts/sync-map-palette.mjs
@@ -61,4 +61,4 @@ if (fs.existsSync(skinsDir)) {
 }
 
 console.log(`sync-map-palette OK — ${copied} files → ${destRoot}`)
-console.log('Did NOT modify company-25.json / outside-stub.json / registry.json.')
+console.log('Did NOT modify company-25.json / world-map.json / registry.json.')

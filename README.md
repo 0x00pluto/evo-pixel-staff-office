@@ -23,7 +23,7 @@ pnpm install
 
 仓库已含运行时切片，**clone 后即可开发，无需再下 Pipoya 原包、也无需跑 `pnpm pack:assets`**：
 
-- 地图：`public/assets/maps/company-25.json` / `outside-stub.json` + `tilesets/*.png`（地板在 **tileset1.png**）
+- 地图：`public/assets/maps/company-25.json` / `world-map.json` + `tilesets/*.png`（办公室地板在 **tileset1.png**；园区瓦片在 `tilesets/village/`）
 - 角色：`public/assets/characters.png`（已入库的 atlas）
 - 改图指南：[`docs/map-editing.md`](docs/map-editing.md)
 - 地图校验（可选）：`pnpm gen:assets`（**不**覆盖 PNG）
@@ -36,6 +36,11 @@ pnpm install
 pnpm import:wa-company
 ```
 
+从 wa-village **重置**世界图（覆盖 `world-map.json` + `tilesets/village/`，本地测试）：
+
+```bash
+pnpm import:wa-world
+```
 #### 维护者：重打角色 atlas（偶发）
 
 仅当改皮肤清单 / 扩池时需要。原包**不要**提交 git（许可禁止再分发素材本体；`temp/` 已 gitignore）。协作者只拉更新后的 `characters.png`。
@@ -80,7 +85,7 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 - 拖拽：移动相机
 - 滚轮：缩放
 - 点击小人 / 名牌：右侧详情卡
-- 点击大门 / 回门区域：办公室 ↔ 室外桩图
+- 点击大门 / 回门区域：办公室 ↔ 世界地图（园区；世界图不显示员工）
 - 顶栏「刷新花名册」：重新读取 JSON
 
 ## 数据约定
@@ -89,7 +94,7 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 - `name` ← `title` 中 `—` 前半段
 - `status` ← experiment / `owns[0]` / `blurb` 截断 /「待命」
 - 数据源接口为 `CatalogSource`（v1 = `JsonFileSource`），便于以后换 SQLite / Postgres
-- 地图用静态 id 注册（`company-25`、`outside-stub`）；花名册**不加** company 字段
+- 地图用静态 id 注册（`company-25`、`world-map`；`kind: office | world`）；花名册**不加** company 字段
 
 ## 目录
 

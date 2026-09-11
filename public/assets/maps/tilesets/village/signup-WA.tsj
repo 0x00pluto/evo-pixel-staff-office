@@ -1,0 +1,15 @@
+{
+  "columns": 20,
+  "image": "signup-WA.png",
+  "imageheight": 460,
+  "imagewidth": 644,
+  "margin": 0,
+  "name": "signup-WA",
+  "spacing": 0,
+  "tilecount": 280,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

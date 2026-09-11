@@ -1,0 +1,15 @@
+{
+  "columns": 69,
+  "image": "tables.png",
+  "imageheight": 3268,
+  "imagewidth": 2239,
+  "margin": 0,
+  "name": "tables",
+  "spacing": 0,
+  "tilecount": 7038,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

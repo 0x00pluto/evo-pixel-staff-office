@@ -1,0 +1,15 @@
+{
+  "columns": 64,
+  "image": "while-wa-flatoffice.png",
+  "imageheight": 2048,
+  "imagewidth": 2048,
+  "margin": 0,
+  "name": "while-wa-flatoffice",
+  "spacing": 0,
+  "tilecount": 4096,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

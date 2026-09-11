@@ -1,0 +1,15 @@
+{
+  "columns": 42,
+  "image": "bookshelves.png",
+  "imageheight": 1030,
+  "imagewidth": 1348,
+  "margin": 0,
+  "name": "bookshelves",
+  "spacing": 0,
+  "tilecount": 1344,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

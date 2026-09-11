@@ -9,6 +9,7 @@
 | [`AGENTS.md`](../AGENTS.md) | 目录语义、能力声明（owns / not）、Agent 协作约定 |
 | [`README.md`](../README.md) | 30 秒启动、素材准备、操作说明 |
 | [`docs/doc_index.md`](./doc_index.md) | 技术文档地图 |
+| [`docs/wa-reference.md`](./wa-reference.md) | WA 双参考仓：MCP `workadventure` / `wa-village`，文件降级 |
 | [`docs/map-editing.md`](./map-editing.md) | Tiled 改办公室地图：图层、碰撞、出门、预览回流 |
 | [`specs/prds/`](../specs/prds/) | 产品规格（PRD） |
 | [`.cursor/commands/team/`](../.cursor/commands/team/) | Cursor 团队命令（产品 / 验收 / 游戏前端 / 测试 / 自主交付） |
@@ -183,34 +184,37 @@ pnpm build
 | 路径 | 说明 |
 |---|---|
 | `/assets/maps/company-25.json` | 公司主图 ≤25（Tiled） |
-| `/assets/maps/outside-stub.json` | 室外桩图 |
-| `/assets/maps/tilesets/*.png` | 32×32 瓦片 |
+| `/assets/maps/world-map.json` | 世界园区图（`kind: world`，不 spawn 员工） |
+| `/assets/maps/tilesets/*.png` | 办公室 32×32 瓦片 |
+| `/assets/maps/tilesets/village/*.png` | 园区瓦片（本地测试导入） |
 | `/assets/characters.png` | Pipoya atlas：12 列 × `SKIN_COUNT` 行（现 64；帧规格对齐 WA） |
 
-加载失败或未注册 `exitMap` 会走 `onAssetsError`，页面顶部显示提示。相机 bounds 等于当前地图像素尺寸；切图后落到 entry/start，仍可自由拖拽。
+加载失败或未注册 `exitMap` 会走 `onAssetsError`，页面顶部显示提示。相机 bounds 等于当前地图像素尺寸；切图后落到 entry/start，仍可自由拖拽。`kind === 'world'` 时不 `spawnAgents`、名牌清空。
 
 ### 地图图层
 
 | 层 | 用途 |
 |---|---|
-| `floor` / `walls` / `furniture` / `above*` | 可见分层；`abovePlayer*` 深度高于角色 |
+| `floor` / `walls` / `furniture` / `above*` | 办公室可见分层；`abovePlayer*` 深度高于角色 |
+| `GroundWorld` / `AboveWorld*` / `roof*` 等 | 世界图可见分层（按 Tiled 顺序） |
 | `collisions` | 碰撞（不可见）；`index > 0` 不可走 |
 | `start` | 默认出生 |
 | `office-door` / `from-office` 等 | `startLayer=true` 命名入口 |
 | `exit` | 属性 `exitMap` + `entryName`；踩格或点击切图 |
-| `objects` | `spawn_*` / `computer_*` |
+| `objects` | `spawn_*` / `computer_*`（仅办公室） |
 
 ### 小人 FSM
 
 见 [`agentFsm.ts`](../src/game/agentFsm.ts)：`idle` / `wander` / `working` 三种模式随机切换。皮肤索引 `0…SKIN_COUNT-1`（`hash(id) % SKIN_COUNT`，见 [`skinCount.json`](../src/catalog/skinCount.json)，现 **64**），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。动画 key 形如 `walk-{skin}-{dir}` / `idle-{skin}-{dir}`。
 
-### 人物碰撞（脚底 24×16 盒）
+### 人物碰撞（脚底 24×24 盒 + 南向 8px）
 
-本仓**不开** Phaser Arcade。地图碰撞是 `boolean[][]` 格网（`rebuildCollision`）；走路时用脚底盒四角 + 中心查格，不是脚底单点。
+本仓**不开** Phaser Arcade。地图碰撞是 `boolean[][]` 格网（`rebuildCollision`）；走路时用脚底盒四角 + 中心查格，不是脚底单点。帧规格与 WA 同为 **32×32**（`CHAR_SCALE=1`），不是人物更大才穿帮。
 
-- **高 16**：对齐 WA `CHARACTER_BODY_HEIGHT`（脚）
+- **高 24**：比 WA 脚高 16 更高一截，避免从桌子南侧贴近时脚/阴影压到桌面 overhang
+- **南向垫高 8**：盒底在脚以下 `y+8`，避免从桌子北侧（椅子侧）贴近时阴影压在桌面上
 - **宽 24**：本仓办公室隔断视觉余量（WA 物理宽是 16；加宽避免胳膊/头发盖住墙瓦）
-- 精灵 `origin (0.5, 1)` 时盒为 `[x−12, y−16]→[x+12, y]`
+- 精灵 `origin (0.5, 1)` 时盒为 `[x−12, y−24]→[x+12, y+8]`
 - spawn / working 目标若落在阻挡格会 BFS 吸附到最近可走点
 - 人人互撞不做
 
@@ -218,12 +222,14 @@ pnpm build
 
 ### 参考项目 WorkAdventure（本机）
 
+查 WA **先用 Codebase Memory MCP**（`workadventure` 引擎仓 / `wa-village` 大图与 tilesets），MCP 不可用或图缺口再读本机文件；双仓约定见 [`docs/wa-reference.md`](./wa-reference.md)。
+
 | 项 | 值 |
 |---|---|
-| 绝对路径 | `/Users/peng.zhi/Documents/Object/参考项目/workadventure` |
-| 相对本仓 | `../../参考项目/workadventure` |
-| 用途 | 地图分层 / tileset / 进出 / **人物做法** 对照 |
-| 禁止 | 拷贝 `play/` 后端、聊天、Jitsi、AGPL 源码进本仓 |
+| 引擎仓 | `/Users/peng.zhi/Documents/Object/参考项目/workadventure`（相对 `../../参考项目/workadventure`） |
+| Village | `/Users/peng.zhi/Documents/Object/参考项目/wa-village`（相对 `../../参考项目/wa-village`） |
+| 用途 | 地图分层 / tileset / 进出 / **人物做法**；village 侧重总部大图与 `tilesets/` |
+| 禁止 | 拷贝 `play/` 后端、聊天、Jitsi、AGPL 源码，或 village 整图/整套 tileset 进本仓 |
 
 **对齐 WA 的是「做法」，不是「24 套数量」：**
 
@@ -231,7 +237,7 @@ pnpm build
 |---|---|
 | 帧 | 32×32；原图 96×128（3×4）；四向 × 3 帧 |
 | 打包 | Pipoya 式完整精灵 → atlas（`pnpm pack:assets`） |
-| 碰撞思路 | 脚底盒查格（本仓宽 24 / 高 16） |
+| 碰撞思路 | 脚底盒查格（本仓宽 24 / 高 24） |
 | 池大小 | **本仓自定**（现 64，可扩 128）；WA `woka.json` 默认 24 只是对方产品池 |
 
 本仓**不**接 WA 分层换装。扩皮肤：改 `scripts/pipoya-64-manifest.txt` 行数 + [`src/catalog/skinCount.json`](../src/catalog/skinCount.json) + `pnpm pack:assets`。细节见 [`docs/map-editing.md`](./map-editing.md)「WA 人物资源」。

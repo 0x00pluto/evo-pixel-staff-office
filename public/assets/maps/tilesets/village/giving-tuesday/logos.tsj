@@ -1,0 +1,15 @@
+{
+  "columns": 10,
+  "image": "logos.png",
+  "imageheight": 928,
+  "imagewidth": 320,
+  "margin": 0,
+  "name": "logos",
+  "spacing": 0,
+  "tilecount": 290,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

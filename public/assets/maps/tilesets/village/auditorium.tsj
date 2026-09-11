@@ -1,0 +1,15 @@
+{
+  "columns": 99,
+  "image": "auditorium.png",
+  "imageheight": 6048,
+  "imagewidth": 3168,
+  "margin": 0,
+  "name": "auditorium",
+  "spacing": 0,
+  "tilecount": 18711,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

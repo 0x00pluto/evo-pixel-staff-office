@@ -25,6 +25,10 @@ export function createOfficeGame(
 
   game.scene.add('OfficeScene', OfficeScene, true, { agents, callbacks })
 
+  if (import.meta.env.DEV) {
+    ;(window as unknown as { __officeGame?: Phaser.Game }).__officeGame = game
+  }
+
   const onResize = () => {
     game.scale.resize(
       parent.clientWidth || window.innerWidth,

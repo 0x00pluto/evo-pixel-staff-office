@@ -10,6 +10,7 @@
    `python3 ../AgentWikiIndex/scripts/refresh_catalog.py`
    若不存在该目录，**跳过**，不要报错、不要去建。
 4. 团队 Cursor 命令见 [`.cursor/commands/team/`](./.cursor/commands/team/)（产品 / 验收 / 游戏前端 / 测试 / 自主交付）；母版维护于 Obsidian Vibecoding 库，勿在本仓另起一套命令体系。
+5. 对照 WorkAdventure 参考仓时，先读 [`docs/wa-reference.md`](./docs/wa-reference.md)：用 Codebase Memory MCP 项目名 `workadventure` / `wa-village`；MCP 不可用或图缺口再读本机文件（勿拷 `play/` / 整套 village）。
 
 ## 目录约定
 

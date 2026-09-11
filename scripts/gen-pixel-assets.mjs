@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Validate Tiled office maps (company-25 / outside-stub).
+ * Validate Tiled maps (company-25 office + world-map).
  * Prefer running via `pnpm gen:assets` which packs shared *.tsj first.
  * Does NOT write PNG.
  */
@@ -13,7 +13,15 @@ const root = path.join(__dirname, '..')
 const mapsDir = path.join(root, 'public', 'assets', 'maps')
 const registryPath = path.join(mapsDir, 'registry.json')
 
-const REQUIRED_LAYERS = ['floor', 'walls', 'furniture', 'collisions', 'start', 'exit']
+const OFFICE_REQUIRED_LAYERS = [
+  'floor',
+  'walls',
+  'furniture',
+  'collisions',
+  'start',
+  'exit',
+]
+const WORLD_REQUIRED_LAYERS = ['collisions', 'start', 'exit']
 const PNG_GUARD = [
   path.join(mapsDir, 'tilesets', 'tileset1.png'),
   path.join(mapsDir, 'tilesets', 'tileset5_export.png'),
@@ -85,6 +93,10 @@ function prop(layer, name) {
   return props.find((p) => p.name === name)?.value
 }
 
+function mapKind(entry) {
+  return entry?.kind === 'world' ? 'world' : 'office'
+}
+
 const mtimesBefore = new Map()
 for (const p of PNG_GUARD) {
   if (fs.existsSync(p)) mtimesBefore.set(p, fs.statSync(p).mtimeMs)
@@ -100,8 +112,11 @@ if (!registry?.maps) {
   fail('registry.json missing maps')
 } else {
   const ids = Object.keys(registry.maps)
-  if (!ids.includes('company-25') || !ids.includes('outside-stub')) {
-    fail('registry must register company-25 and outside-stub')
+  if (!ids.includes('company-25') || !ids.includes('world-map')) {
+    fail('registry must register company-25 and world-map')
+  }
+  if (ids.includes('outside-stub')) {
+    fail('outside-stub must not remain in registry (replaced by world-map)')
   }
 }
 
@@ -111,7 +126,8 @@ for (const [id, entry] of Object.entries(registry?.maps || {})) {
   const map = loadJson(mapPath)
   if (!map) continue
 
-  console.log(`Checking ${id} (${map.width}x${map.height})…`)
+  const kind = mapKind(entry)
+  console.log(`Checking ${id} kind=${kind} (${map.width}x${map.height})…`)
 
   if (map.orientation !== 'orthogonal' || map.tilewidth !== 32 || map.tileheight !== 32) {
     fail(`${id}: must be orthogonal 32×32`)
@@ -123,7 +139,14 @@ for (const [id, entry] of Object.entries(registry?.maps || {})) {
     }
   }
 
-  for (const name of REQUIRED_LAYERS) {
+  const names = (map.tilesets || []).map((t) => t.name)
+  const dup = names.filter((n, i) => n && names.indexOf(n) !== i)
+  if (dup.length) {
+    fail(`${id}: duplicate tileset name(s) ${[...new Set(dup)].join(', ')} — Phaser binds by name`)
+  }
+
+  const required = kind === 'world' ? WORLD_REQUIRED_LAYERS : OFFICE_REQUIRED_LAYERS
+  for (const name of required) {
     if (!layerByName(map, name)) fail(`${id}: missing layer ${name}`)
   }
 
@@ -138,25 +161,39 @@ for (const [id, entry] of Object.entries(registry?.maps || {})) {
   else if (!registry.maps[exitMap]) fail(`${id}: exitMap «${exitMap}» not in registry`)
   if (!entryName) fail(`${id}: exit missing entryName`)
 
-  if (!walkableAtDoor(map)) fail(`${id}: door/exit appears sealed (no walkable neighbor)`)
+  if (kind === 'office') {
+    if (!walkableAtDoor(map)) fail(`${id}: door/exit appears sealed (no walkable neighbor)`)
 
-  const objects = layerByName(map, 'objects')?.objects || []
-  const spawns = objects.filter((o) => String(o.name || '').startsWith('spawn_'))
-  const computers = objects.filter((o) => String(o.name || '').startsWith('computer_'))
-  if (id === 'company-25') {
-    if (spawns.length < 25) fail(`${id}: need ≥25 spawn_* (got ${spawns.length})`)
-    if (computers.length < 25) fail(`${id}: need ≥25 computer_* (got ${computers.length})`)
+    const objects = layerByName(map, 'objects')?.objects || []
+    const spawns = objects.filter((o) => String(o.name || '').startsWith('spawn_'))
+    const computers = objects.filter((o) => String(o.name || '').startsWith('computer_'))
+    if (id === 'company-25') {
+      if (spawns.length < 25) fail(`${id}: need ≥25 spawn_* (got ${spawns.length})`)
+      if (computers.length < 25) fail(`${id}: need ≥25 computer_* (got ${computers.length})`)
+    } else if (spawns.length < 1) {
+      fail(`${id}: need ≥1 spawn_*`)
+    }
+
+    const namedEntries = (map.layers || []).filter(
+      (l) => l.type === 'tilelayer' && prop(l, 'startLayer') === true,
+    )
+    console.log(
+      `  ok office; spawns=${spawns.length} computers=${computers.length} namedEntries=${namedEntries.map((l) => l.name).join(',') || '(none)'} exit→${exitMap}#${entryName}`,
+    )
   } else {
-    if (spawns.length < 1) fail(`${id}: need ≥1 spawn_*`)
+    const visual = (map.layers || []).filter(
+      (l) =>
+        l.type === 'tilelayer' &&
+        !['collisions', 'start', 'exit', 'from-office', 'office-door', 'silentOverlay'].includes(
+          l.name,
+        ) &&
+        !String(l.name || '').startsWith('exit'),
+    )
+    if (visual.length < 1) fail(`${id}: world map needs ≥1 visual tile layer`)
+    console.log(
+      `  ok world; visualLayers=${visual.length} exit→${exitMap}#${entryName}`,
+    )
   }
-
-  // named entry layers referenced by the other map
-  const namedEntries = (map.layers || []).filter(
-    (l) => l.type === 'tilelayer' && prop(l, 'startLayer') === true,
-  )
-  console.log(
-    `  ok layers; spawns=${spawns.length} computers=${computers.length} namedEntries=${namedEntries.map((l) => l.name).join(',') || '(none)'} exit→${exitMap}#${entryName}`,
-  )
 }
 
 // Prove we did not touch PNGs

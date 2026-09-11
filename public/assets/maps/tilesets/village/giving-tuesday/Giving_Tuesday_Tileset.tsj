@@ -1,0 +1,15 @@
+{
+  "columns": 15,
+  "image": "Giving_Tuesday_Tileset.png",
+  "imageheight": 608,
+  "imagewidth": 480,
+  "margin": 0,
+  "name": "Giving_Tuesday_Tileset",
+  "spacing": 0,
+  "tilecount": 285,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

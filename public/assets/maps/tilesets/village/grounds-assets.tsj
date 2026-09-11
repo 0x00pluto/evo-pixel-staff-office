@@ -1,0 +1,27 @@
+{
+  "columns": 73,
+  "image": "grounds-assets.png",
+  "imageheight": 1567,
+  "imagewidth": 2348,
+  "margin": 0,
+  "name": "grounds-assets",
+  "spacing": 0,
+  "tilecount": 3504,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10",
+  "tiles": [
+    {
+      "id": 441,
+      "properties": [
+        {
+          "name": "name",
+          "type": "string",
+          "value": "wooden-tile"
+        }
+      ]
+    }
+  ]
+}

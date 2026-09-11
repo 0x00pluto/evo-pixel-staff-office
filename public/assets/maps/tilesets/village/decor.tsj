@@ -1,0 +1,15 @@
+{
+  "columns": 39,
+  "image": "decor.png",
+  "imageheight": 1030,
+  "imagewidth": 1248,
+  "margin": 0,
+  "name": "decor",
+  "spacing": 0,
+  "tilecount": 1248,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

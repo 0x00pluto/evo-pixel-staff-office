@@ -5,6 +5,7 @@ import { hashPick, nextMode, type AgentRuntime } from './agentFsm'
 import {
   DEFAULT_MAP_ID,
   getMapEntry,
+  getMapKind,
   isRegisteredMapId,
   MAP_REGISTRY,
   selectOfficeMapId,
@@ -18,11 +19,14 @@ const CELL = TILE * CHAR_SCALE
 const SPEED = 55
 /**
  * Foot hitbox. Sprite origin is (0.5, 1) = feet center.
- * Height 16 aligns with WA CHARACTER_BODY_HEIGHT; width 24 is office visual margin
- * so arms/hair don't paint over wall tiles (WA physics body is 16×16).
+ * Height 24 (taller than WA's 16) so feet stop short of desk overhang from the south;
+ * BODY_SOUTH pads below the feet so approaching a desk from the north doesn't put
+ * the foot shadow on the desk top; width 24 is office visual margin (WA body is 16×16).
  */
 const BODY_W = 24
-const BODY_H = 16
+const BODY_H = 24
+/** Extra hitbox below feet (south); keeps shadow off desk when closing from the north. */
+const BODY_SOUTH = 8
 /** World px above sprite top so the plate sits fully over the head (WA ≈ 2; we have 2 lines + hats). */
 const NAMEPLATE_GAP = 12
 
@@ -139,11 +143,17 @@ export class OfficeScene extends Phaser.Scene {
     this.currentMapId = selectOfficeMapId(this.agents.length)
     const ok = this.mountMap(this.currentMapId, 'start')
     if (!ok) return
+    if (getMapKind(this.currentMapId) === 'world') {
+      this.callbacks.onNameplates([])
+      return
+    }
     this.spawnAgents(this.agents, 'start')
   }
 
   reloadAgents(agents: AgentPersona[]) {
     this.agents = agents
+    // World map: keep park view; roster count lives in React toolbar.
+    if (getMapKind(this.currentMapId) === 'world') return
     this.clearAgents()
     if (this.assetsFailed || !this.tilemap) return
     const nextId = selectOfficeMapId(agents.length)
@@ -256,7 +266,11 @@ export class OfficeScene extends Phaser.Scene {
     this.cell = map.tileWidth || CELL
 
     const tilesets: Phaser.Tilemaps.Tileset[] = []
+    const mapTilesetNames = new Set(
+      (map.tilesets ?? []).map((t) => t.name).filter(Boolean),
+    )
     for (const ts of TILESET_ASSETS) {
+      if (!mapTilesetNames.has(ts.name)) continue
       const added = map.addTilesetImage(ts.name, ts.key)
       if (added) tilesets.push(added)
     }
@@ -268,30 +282,56 @@ export class OfficeScene extends Phaser.Scene {
       return false
     }
 
-    const depthFor = (name: string): number => {
-      if (name === 'floor') return 0
-      if (name === 'walls') return 1
-      if (name === 'furniture') return 2
-      if (name === 'aboveFurniture') return 3
-      if (name.startsWith('abovePlayer') || name.startsWith('above')) return 10_000
-      return 1
-    }
+    const kind = getMapKind(mapId)
+    const logicLayer = (name: string) =>
+      name === 'collisions' ||
+      name === 'collision' ||
+      name === 'start' ||
+      name === 'exit' ||
+      name.startsWith('exit') ||
+      name === 'from-office' ||
+      name === 'office-door' ||
+      name === 'silentOverlay' ||
+      name === 'objects'
 
-    const visibleNames = [
-      'floor',
-      'walls',
-      'furniture',
-      'aboveFurniture',
-      'abovePlayer1',
-      'abovePlayer2',
-      'abovePlayer3',
-    ]
-    for (const name of visibleNames) {
-      if (!map.getLayer(name)) continue
-      const layer = map.createLayer(name, tilesets, 0, 0)
-      if (!layer) continue
-      layer.setDepth(depthFor(name))
-      this.mapLayers.push(layer)
+    if (kind === 'world') {
+      // Village layers: create in Tiled order; skip logic / invisible markers.
+      let depth = 0
+      for (const layerData of map.layers) {
+        const name = layerData.name
+        if (logicLayer(name)) continue
+        if (!map.getLayer(name)) continue
+        const layer = map.createLayer(name, tilesets, 0, 0)
+        if (!layer) continue
+        layer.setDepth(depth++)
+        this.mapLayers.push(layer)
+      }
+    } else {
+      const depthFor = (name: string): number => {
+        if (name === 'floor') return 0
+        if (name === 'walls') return 1
+        if (name === 'furniture') return 2
+        if (name === 'aboveFurniture') return 3
+        if (name.startsWith('abovePlayer') || name.startsWith('above')) return 10_000
+        return 1
+      }
+
+      const visibleNames = [
+        'floor',
+        'walls',
+        'furniture',
+        'aboveFurniture',
+        'abovePlayer1',
+        'abovePlayer2',
+        'abovePlayer3',
+      ]
+      for (const name of visibleNames) {
+        if (!map.getLayer(name)) continue
+        const layer = map.createLayer(name, tilesets, 0, 0)
+        if (!layer) continue
+        layer.setDepth(depthFor(name))
+        this.mapLayers.push(layer)
+      }
     }
 
     this.exitZones = this.parseExitZones(map)
@@ -478,6 +518,7 @@ export class OfficeScene extends Phaser.Scene {
     this.switching = true
     this.callbacks.onSelect(null)
     this.clearAgents()
+    this.callbacks.onNameplates([])
 
     const ok = this.mountMap(exitMap, entryName)
     if (!ok) {
@@ -485,7 +526,9 @@ export class OfficeScene extends Phaser.Scene {
       return
     }
 
-    this.spawnAgents(this.agents, entryName)
+    if (getMapKind(exitMap) !== 'world') {
+      this.spawnAgents(this.agents, entryName)
+    }
     this.exitCooldownUntil = this.time.now + 1200
     this.switching = false
   }
@@ -546,7 +589,7 @@ export class OfficeScene extends Phaser.Scene {
       })
 
       // Soft elliptical foot shadow (not Light2D); depth just below the sprite.
-      const shadow = this.add.ellipse(spawn.x, spawn.y - 2, 18, 8, 0x000000, 0.35)
+      const shadow = this.add.ellipse(spawn.x, spawn.y, 18, 6, 0x000000, 0.35)
       shadow.setDepth(spawn.y - 1)
 
       const { mode, durationMs } = nextMode()
@@ -576,18 +619,19 @@ export class OfficeScene extends Phaser.Scene {
 
   /**
    * Foot hitbox walkable check.
-   * Origin (0.5, 1): box is [x−BODY_W/2, y−BODY_H] → [x+BODY_W/2, y].
+   * Origin (0.5, 1): box is [x−BODY_W/2, y−BODY_H] → [x+BODY_W/2, y+BODY_SOUTH].
    * Corners (+ center) must clear.
    */
   private walkableWorld(wx: number, wy: number): boolean {
     const hw = BODY_W / 2
     const top = wy - BODY_H
+    const bottom = wy + BODY_SOUTH
     const samples: Point[] = [
       { x: wx - hw, y: top },
       { x: wx + hw, y: top },
-      { x: wx - hw, y: wy },
-      { x: wx + hw, y: wy },
-      { x: wx, y: wy - BODY_H / 2 },
+      { x: wx - hw, y: bottom },
+      { x: wx + hw, y: bottom },
+      { x: wx, y: (top + bottom) / 2 },
     ]
     return samples.every((p) => this.cellWalkable(p.x, p.y))
   }
@@ -693,7 +737,7 @@ export class OfficeScene extends Phaser.Scene {
       sprite.setDepth(sprite.y)
       const shadow = this.shadows.get(id)
       if (shadow) {
-        shadow.setPosition(sprite.x, sprite.y - 2)
+        shadow.setPosition(sprite.x, sprite.y)
         shadow.setDepth(sprite.y - 1)
       }
 

@@ -1,0 +1,15 @@
+{
+  "columns": 97,
+  "image": "office-building.png",
+  "imageheight": 3040,
+  "imagewidth": 3104,
+  "margin": 0,
+  "name": "office-building",
+  "spacing": 0,
+  "tilecount": 9215,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

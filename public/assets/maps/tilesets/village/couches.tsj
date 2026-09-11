@@ -1,0 +1,15 @@
+{
+  "columns": 92,
+  "image": "couches.png",
+  "imageheight": 2336,
+  "imagewidth": 2946,
+  "margin": 0,
+  "name": "couches",
+  "spacing": 0,
+  "tilecount": 6716,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10"
+}

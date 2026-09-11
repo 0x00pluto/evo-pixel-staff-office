@@ -1,0 +1,27 @@
+{
+  "columns": 200,
+  "image": "GroundWorld.png",
+  "imageheight": 3840,
+  "imagewidth": 6400,
+  "margin": 0,
+  "name": "GroundWorld",
+  "spacing": 0,
+  "tilecount": 24000,
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10",
+  "tiles": [
+    {
+      "id": 5817,
+      "properties": [
+        {
+          "name": "collides",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    }
+  ]
+}
