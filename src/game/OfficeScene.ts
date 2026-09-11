@@ -6,6 +6,7 @@ import {
   getMapEntry,
   isRegisteredMapId,
   MAP_REGISTRY,
+  selectOfficeMapId,
   TILESET_ASSETS,
 } from './mapRegistry'
 import type { NameplateView, OfficeGameCallbacks } from './types'
@@ -18,10 +19,22 @@ const SKIN_COUNT = 64
 
 type Point = { x: number; y: number }
 
+/** One desk: same N in spawn_N + computer_N. */
+type Workstation = {
+  spawn: Point
+  computer: Point | null
+}
+
 type ExitZone = {
   exitMap: string
   entryName: string
   cells: Set<string>
+}
+
+function parseObjectIndex(name: string, prefix: string): number | null {
+  if (!name.startsWith(prefix)) return null
+  const n = Number(name.slice(prefix.length))
+  return Number.isInteger(n) && n >= 0 ? n : null
 }
 
 function cellKey(tx: number, ty: number) {
@@ -51,7 +64,7 @@ export class OfficeScene extends Phaser.Scene {
   private mapH = 0
   private cell = CELL
   private spawns: Point[] = []
-  private computers: Point[] = []
+  private workstations: Workstation[] = []
   private sprites = new Map<string, Phaser.GameObjects.Sprite>()
   private runtimes = new Map<string, AgentRuntime>()
   private drag = false
@@ -111,6 +124,7 @@ export class OfficeScene extends Phaser.Scene {
     this.setupCameraInput()
     this.ensureAnims()
 
+    this.currentMapId = selectOfficeMapId(this.agents.length)
     const ok = this.mountMap(this.currentMapId, 'start')
     if (!ok) return
     this.spawnAgents(this.agents, 'start')
@@ -119,7 +133,13 @@ export class OfficeScene extends Phaser.Scene {
   reloadAgents(agents: AgentPersona[]) {
     this.agents = agents
     this.clearAgents()
-    if (!this.assetsFailed && this.tilemap) this.spawnAgents(agents, null)
+    if (this.assetsFailed || !this.tilemap) return
+    const nextId = selectOfficeMapId(agents.length)
+    if (nextId !== this.currentMapId && isRegisteredMapId(nextId)) {
+      const ok = this.mountMap(nextId, 'start')
+      if (!ok) return
+    }
+    this.spawnAgents(agents, null)
   }
 
   private setupCameraInput() {
@@ -184,7 +204,7 @@ export class OfficeScene extends Phaser.Scene {
     this.exitZones = []
     this.collision = []
     this.spawns = []
-    this.computers = []
+    this.workstations = []
   }
 
   private clearAgents() {
@@ -260,18 +280,9 @@ export class OfficeScene extends Phaser.Scene {
       this.mapLayers.push(layer)
     }
 
-    // Collision from collisions layer (any non-zero gid)
-    const colLayer = map.getLayer('collisions')
-    this.collision = Array.from({ length: this.mapH }, (_, y) =>
-      Array.from({ length: this.mapW }, (_, x) => {
-        if (!colLayer) return false
-        const tile = map.getTileAt(x, y, true, 'collisions')
-        return !!(tile && tile.index > 0)
-      }),
-    )
-
     this.exitZones = this.parseExitZones(map)
     this.parseObjects(map)
+    this.rebuildCollision(map)
 
     const worldW = this.mapW * this.cell
     const worldH = this.mapH * this.cell
@@ -283,6 +294,36 @@ export class OfficeScene extends Phaser.Scene {
     this.cameras.main.centerOn(focus.x, focus.y)
 
     return true
+  }
+
+  private tileHasCollides(tile: Phaser.Tilemaps.Tile | null): boolean {
+    if (!tile || tile.index <= 0) return false
+    const props = tile.properties as
+      | { collides?: boolean }
+      | Array<{ name: string; value: unknown }>
+      | undefined
+    if (!props) return false
+    if (Array.isArray(props)) {
+      return props.some((p) => p.name === 'collides' && p.value === true)
+    }
+    return props.collides === true
+  }
+
+  private rebuildCollision(map: Phaser.Tilemaps.Tilemap) {
+    const layers = ['walls', 'furniture', 'aboveFurniture', 'collisions'] as const
+    this.collision = Array.from({ length: this.mapH }, (_, y) =>
+      Array.from({ length: this.mapW }, (_, x) => {
+        for (const name of layers) {
+          if (!map.getLayer(name)) continue
+          const tile = map.getTileAt(x, y, true, name)
+          if (!tile || tile.index <= 0) continue
+          if (name === 'walls') return true
+          if (name === 'collisions') return true
+          if (this.tileHasCollides(tile)) return true
+        }
+        return false
+      }),
+    )
   }
 
   /** Cover zoom: map fills viewport; never allow zoom-out past gutters. */
@@ -330,14 +371,45 @@ export class OfficeScene extends Phaser.Scene {
 
   private parseObjects(map: Phaser.Tilemaps.Tilemap) {
     this.spawns = []
-    this.computers = []
+    this.workstations = []
+    const byIndex = new Map<number, { spawn?: Point; computer?: Point }>()
+
     for (const obj of map.getObjectLayer('objects')?.objects ?? []) {
       const name = obj.name || ''
-      const x = obj.x ?? 0
-      const y = obj.y ?? 0
-      if (name.startsWith('spawn_')) this.spawns.push({ x, y })
-      if (name.startsWith('computer_')) this.computers.push({ x, y })
+      const pt: Point = { x: obj.x ?? 0, y: obj.y ?? 0 }
+      const spawnIdx = parseObjectIndex(name, 'spawn_')
+      if (spawnIdx !== null) {
+        const slot = byIndex.get(spawnIdx) ?? {}
+        slot.spawn = pt
+        byIndex.set(spawnIdx, slot)
+        continue
+      }
+      const computerIdx = parseObjectIndex(name, 'computer_')
+      if (computerIdx !== null) {
+        const slot = byIndex.get(computerIdx) ?? {}
+        slot.computer = pt
+        byIndex.set(computerIdx, slot)
+      }
     }
+
+    const complete: Workstation[] = []
+    const spawnOnly: Workstation[] = []
+    for (const idx of [...byIndex.keys()].sort((a, b) => a - b)) {
+      const slot = byIndex.get(idx)!
+      if (slot.spawn && slot.computer) {
+        complete.push({ spawn: slot.spawn, computer: slot.computer })
+      } else if (slot.spawn) {
+        spawnOnly.push({ spawn: slot.spawn, computer: null })
+      }
+    }
+
+    this.workstations = complete.length ? complete : spawnOnly
+    this.spawns = this.workstations.map((w) => w.spawn)
+  }
+
+  private workstationFor(id: string): Workstation | null {
+    if (!this.workstations.length) return null
+    return hashPick(id, this.workstations)
   }
 
   private resolveEntryPoint(
@@ -435,10 +507,11 @@ export class OfficeScene extends Phaser.Scene {
 
     agents.forEach((persona, i) => {
       let spawn: Point = { x: this.cell * 2, y: this.cell * 2 }
+      const desk = this.workstationFor(persona.id)
       if (entryPoint && i === 0) {
         spawn = entryPoint
-      } else if (this.spawns.length) {
-        spawn = hashPick(persona.id, this.spawns)
+      } else if (desk) {
+        spawn = desk.spawn
       } else if (entryPoint) {
         spawn = {
           x: entryPoint.x + ((i % 5) - 2) * 8,
@@ -512,12 +585,14 @@ export class OfficeScene extends Phaser.Scene {
           const t = this.randomWalkTarget()
           rt.targetX = t.x
           rt.targetY = t.y
-        } else if (rt.mode === 'working' && this.computers.length) {
-          const c = hashPick(id, this.computers)
-          rt.targetX = c.x
-          rt.targetY = c.y + this.cell * 0.9
-        } else if (rt.mode === 'working' && !this.computers.length) {
-          rt.mode = 'idle'
+        } else if (rt.mode === 'working') {
+          const desk = this.workstationFor(id)
+          if (desk?.computer) {
+            rt.targetX = desk.computer.x
+            rt.targetY = desk.computer.y + this.cell * 0.9
+          } else {
+            rt.mode = 'idle'
+          }
         }
       }
 

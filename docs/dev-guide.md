@@ -122,7 +122,7 @@ export EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 ### 3. 准备像素素材
 
-仓库内通常已有 [`public/assets/maps/`](../public/assets/maps/)（`company-a.json` / `outside-stub.json` + tilesets）与 [`CREDITS.md`](../public/assets/CREDITS.md)。`characters.png` 需本地组装：
+仓库内通常已有 [`public/assets/maps/`](../public/assets/maps/)（`company-25.json` 为 ≤25 人 WA 办公室 + tilesets）与 [`CREDITS.md`](../public/assets/CREDITS.md)。改图见 [`map-editing.md`](./map-editing.md)。`characters.png` 需本地组装：
 
 1. 从 itch 下载 Pipoya 角色包（**不要**提交 zip/rar）
 2. 解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA`）
@@ -133,10 +133,10 @@ pnpm pack:assets   # → public/assets/characters.png
 pnpm gen:assets    # 校验 Tiled 地图；不覆盖任何 PNG
 ```
 
-重建办公室/桩图布局：
+从 WA starter 重置主图（覆盖 `company-25.json`）：
 
 ```bash
-node scripts/build-tiled-maps.mjs
+pnpm import:wa-company
 ```
 
 署名与许可见 [`public/assets/CREDITS.md`](../public/assets/CREDITS.md)。
@@ -181,14 +181,12 @@ pnpm build
 
 | 路径 | 说明 |
 |---|---|
-| `/assets/maps/company-a.json` | 公司主图（Tiled） |
+| `/assets/maps/company-25.json` | 公司主图 ≤25（Tiled） |
 | `/assets/maps/outside-stub.json` | 室外桩图 |
 | `/assets/maps/tilesets/*.png` | 32×32 瓦片 |
 | `/assets/characters.png` | Pipoya 64 套 × 四向 × 3 帧 atlas（12 列 × 64 行） |
 
 加载失败或未注册 `exitMap` 会走 `onAssetsError`，页面顶部显示提示。相机 bounds 等于当前地图像素尺寸；切图后落到 entry/start，仍可自由拖拽。
-
-旧 `office.png` / `office-layout.json` **不再加载**（可留仓）。
 
 ### 地图图层
 
@@ -224,7 +222,7 @@ pnpm build
 | 顶栏文案 / 刷新 | [`src/ui/Toolbar.tsx`](../src/ui/Toolbar.tsx) |
 | 状态文案、皮肤规则、字段映射 | [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) **和** [`src/catalog/mapPersona.ts`](../src/catalog/mapPersona.ts) |
 | 走路、碰撞、相机、切图 | [`src/game/OfficeScene.ts`](../src/game/OfficeScene.ts) + [`mapRegistry.ts`](../src/game/mapRegistry.ts) |
-| 办公室 / 桩图布局 | [`scripts/build-tiled-maps.mjs`](../scripts/build-tiled-maps.mjs) → 再 `pnpm gen:assets` 校验 |
+| 办公室 / 桩图布局 | Tiled 编辑 `public/assets/maps/*.json`；重置主图用 `pnpm import:wa-company` → `pnpm gen:assets` |
 | 角色 atlas / 皮肤清单 | [`scripts/pack-office-assets.mjs`](../scripts/pack-office-assets.mjs) + [`scripts/pipoya-64-manifest.txt`](../scripts/pipoya-64-manifest.txt) → `pnpm pack:assets` |
 | 开发态 API | [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) |
 | 预览 CLI | [`src/cli/run.mjs`](../src/cli/run.mjs) |
@@ -250,5 +248,8 @@ pnpm build
 | `pnpm preview` | Vite 预览（不含花名册 API；日常用 `pixel-office`） |
 | `pnpm pixel-office` | 构建产物 + `/api/catalog` 一键预览 |
 | `pnpm pack:assets` | vendor → `characters.png` |
-| `pnpm gen:assets` | 校验 Tiled 地图（不写 PNG） |
-| `node scripts/build-tiled-maps.mjs` | 重建 `company-a` / `outside-stub` JSON |
+| `pnpm gen:assets` | pack `tilesets/*.tsj` 后校验 Tiled 地图（不写 PNG） |
+| `pnpm pack:tilesets` | 把共享 `.tsj` 的 collides 灌进地图 JSON |
+| `pnpm annotate:collides` | 批量补 `.tsj` collides 再 pack |
+| `pnpm import:wa-company` | 用 WA starter 重置 `company-25.json` |
+| `pnpm sync:map-palette` | 同步 WA `maps/assets` PNG 到 tilesets |

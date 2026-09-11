@@ -115,7 +115,7 @@ export default function App() {
             <div className="font-semibold tracking-wide">地图 / 素材无法加载</div>
             <p className="mt-1 text-xs leading-relaxed text-rose-200/90">{assetsError}</p>
             <p className="mt-2 text-[10px] text-rose-300/80">
-              检查 public/assets/maps（company-a / outside-stub JSON + tilesets）与 characters.png；切图目标须在地图注册表中。
+              检查 public/assets/maps（company-25 / outside-stub JSON + tilesets）与 characters.png；切图目标须在地图注册表中。
             </p>
           </div>
         ) : null}

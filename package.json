@@ -14,7 +14,11 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "pixel-office": "node ./bin/pixel-office.mjs",
-    "gen:assets": "node ./scripts/gen-pixel-assets.mjs",
+    "gen:assets": "node ./scripts/pack-external-tilesets.mjs && node ./scripts/gen-pixel-assets.mjs",
+    "sync:map-palette": "node ./scripts/sync-map-palette.mjs",
+    "import:wa-company": "node ./scripts/import-wa-starter-company.mjs",
+    "annotate:collides": "node ./scripts/annotate-collides.mjs",
+    "pack:tilesets": "node ./scripts/pack-external-tilesets.mjs",
     "pack:assets": "node ./scripts/pack-office-assets.mjs"
   },
   "dependencies": {

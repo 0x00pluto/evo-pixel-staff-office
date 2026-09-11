@@ -1,9 +1,10 @@
 {
   "maps": {
-    "company-a": {
-      "id": "company-a",
-      "json": "/assets/maps/company-a.json",
-      "label": "Company A Office"
+    "company-25": {
+      "id": "company-25",
+      "json": "/assets/maps/company-25.json",
+      "label": "Office (≤25)",
+      "headcountMax": 25
     },
     "outside-stub": {
       "id": "outside-stub",
@@ -11,7 +12,7 @@
       "label": "Outside plaza stub"
     }
   },
-  "defaultMapId": "company-a",
+  "defaultMapId": "company-25",
   "tilesets": [
     {
       "name": "tileset5_export",

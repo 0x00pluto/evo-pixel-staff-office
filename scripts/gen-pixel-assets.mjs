@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Validate Tiled office maps (company-a / outside-stub).
- * Does NOT write or overwrite any PNG / JSON map files.
+ * Validate Tiled office maps (company-25 / outside-stub).
+ * Prefer running via `pnpm gen:assets` which packs shared *.tsj first.
+ * Does NOT write PNG.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -18,6 +19,13 @@ const PNG_GUARD = [
   path.join(mapsDir, 'tilesets', 'tileset5_export.png'),
   path.join(mapsDir, 'tilesets', 'Special_Zones.png'),
   path.join(root, 'public', 'assets', 'characters.png'),
+]
+const TSJ_GUARD = [
+  'tileset5_export.tsj',
+  'tileset6_export.tsj',
+  'tileset1.tsj',
+  'tileset1-repositioning.tsj',
+  'Special_Zones.tsj',
 ]
 
 function fail(msg) {
@@ -82,13 +90,18 @@ for (const p of PNG_GUARD) {
   if (fs.existsSync(p)) mtimesBefore.set(p, fs.statSync(p).mtimeMs)
 }
 
+for (const name of TSJ_GUARD) {
+  const p = path.join(mapsDir, 'tilesets', name)
+  if (!fs.existsSync(p)) fail(`missing shared tileset ${name} — ensure public/assets/maps/tilesets/*.tsj exist`)
+}
+
 const registry = loadJson(registryPath)
 if (!registry?.maps) {
   fail('registry.json missing maps')
 } else {
   const ids = Object.keys(registry.maps)
-  if (!ids.includes('company-a') || !ids.includes('outside-stub')) {
-    fail('registry must register company-a and outside-stub')
+  if (!ids.includes('company-25') || !ids.includes('outside-stub')) {
+    fail('registry must register company-25 and outside-stub')
   }
 }
 
@@ -102,6 +115,12 @@ for (const [id, entry] of Object.entries(registry?.maps || {})) {
 
   if (map.orientation !== 'orthogonal' || map.tilewidth !== 32 || map.tileheight !== 32) {
     fail(`${id}: must be orthogonal 32×32`)
+  }
+
+  for (const ts of map.tilesets || []) {
+    if (ts.source) {
+      fail(`${id}: tileset still has source «${ts.source}» — run pnpm pack:tilesets for Phaser`)
+    }
   }
 
   for (const name of REQUIRED_LAYERS) {
@@ -124,9 +143,9 @@ for (const [id, entry] of Object.entries(registry?.maps || {})) {
   const objects = layerByName(map, 'objects')?.objects || []
   const spawns = objects.filter((o) => String(o.name || '').startsWith('spawn_'))
   const computers = objects.filter((o) => String(o.name || '').startsWith('computer_'))
-  if (id === 'company-a') {
-    if (spawns.length < 21) fail(`${id}: need ≥21 spawn_* (got ${spawns.length})`)
-    if (computers.length < 21) fail(`${id}: need ≥21 computer_* (got ${computers.length})`)
+  if (id === 'company-25') {
+    if (spawns.length < 25) fail(`${id}: need ≥25 spawn_* (got ${spawns.length})`)
+    if (computers.length < 25) fail(`${id}: need ≥25 computer_* (got ${computers.length})`)
   } else {
     if (spawns.length < 1) fail(`${id}: need ≥1 spawn_*`)
   }
@@ -151,4 +170,4 @@ if (process.exitCode) {
   process.exit(1)
 }
 
-console.log('gen:assets validation OK — did not write any PNG or map JSON.')
+console.log('gen:assets validation OK — shared *.tsj packed into maps; PNG untouched.')

@@ -22,94 +22,141 @@
 
 | 路径 | 说明 |
 |------|------|
-| [`public/assets/maps/company-a.json`](../public/assets/maps/company-a.json) | 唯一公司主图（多房间办公室） |
+| [`public/assets/maps/company-25.json`](../public/assets/maps/company-25.json) | **主图（≤25 人）** WA starter 静态桌 + exit/入口/objects |
 | [`public/assets/maps/outside-stub.json`](../public/assets/maps/outside-stub.json) | 室外/园区桩图（出门往返） |
 | [`public/assets/maps/registry.json`](../public/assets/maps/registry.json) | map id → JSON 路径；exit 只引用 id |
-| [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | `tileset1.png` 等 WA 风瓦片 + `Special_Zones.png` |
-| [`src/game/mapRegistry.ts`](../src/game/mapRegistry.ts) | 运行时注册表（与 `registry.json` 对齐） |
+| [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | 瓦片调色板（地板在 **tileset1.png**；另有 skins/） |
+| [`public/assets/maps/reference/`](../public/assets/maps/reference/) | WA starter / chatzone / collections 对照（不进游戏） |
+| [`public/assets/maps/maps.tiled-project`](../public/assets/maps/maps.tiled-project) | 可选：Tiled 工程入口 |
+| [`public/assets/maps/README.md`](../public/assets/maps/README.md) | 工作区一页纸 |
+| [`src/game/mapRegistry.ts`](../src/game/mapRegistry.ts) | 注册表 + `selectOfficeMapId` 分档选图 |
 | [`src/game/OfficeScene.ts`](../src/game/OfficeScene.ts) | 加载 Tilemap、碰撞、切图 |
 | [`public/assets/CREDITS.md`](../public/assets/CREDITS.md) | 瓦片许可与署名 |
 
-地图 JSON 内 tileset 的 `image` 为相对路径（如 `tilesets/tileset1.png`）。用 Tiled 打开 JSON 时，请从 `public/assets/maps/` 打开，保证相对路径能解析到 PNG。
+## 人数分档
+
+| 档 | 人数 | map id | 本轮 |
+|----|------|--------|------|
+| S | ≤10 | `company-10` | 预留 → 回退 `company-25` |
+| M | ≤25 | `company-25` | **已落地** |
+| L | ≤100 | `company-100` | 预留 → 回退 `company-25` |
+
+启动时 `selectOfficeMapId(agents.length)` 选办公室图；超过工位数则 hash 复用桌。
+
+## 地板贴图在哪？（必读）
+
+**没有单独的 `floor.png`。** 地板是图集里的格子：
+
+1. Tiled 右侧 **Tilesets** 面板点选 **`tileset1`**（不要选 Special_Zones / tileset5）
+2. 木地板主格 ≈ 图集左上第一格（地图 GID **201**）；变体格 GID **223**
+3. 文件：[`public/assets/maps/tilesets/tileset1.png`](../public/assets/maps/tilesets/tileset1.png)
+
+家具桌椅多在 **`tileset1-repositioning`** / **`tileset5_export`**；墙在 **`tileset5_export`**（如 58/63/73/45）。
+
+## 协同约定（人 + Agent）
+
+| 角色 | 做什么 |
+|------|--------|
+| 你（Tiled） | 在 `public/assets/maps/` 打开 JSON，摆图后 **Save**（保持 JSON） |
+| Agent | 素材同步、校验、修运行时；**按你保存的 JSON 验收** |
+| 预览 | `pnpm gen:assets` → `pnpm dev:office` → 硬刷新 |
+
+硬规则：
+
+1. 日常只在 Tiled 里 **Save JSON**，不要手写覆盖主图。
+2. 从 WA starter **重置**主图：`pnpm import:wa-company`（写 `company-25.json`）。
+3. 你改完后可对 Agent 说：「已保存 company-25，请按新图验收」。
+4. 补瓦片库（不改地图 JSON）：`pnpm sync:map-palette`。
+5. 对照家具目录：`public/assets/maps/reference/collections/`（不进 Phaser）。
 
 ## 日常改图流程
 
 ```text
 1. 安装并打开 Tiled
-2. File → Open → public/assets/maps/company-a.json
-   （或 outside-stub.json）
-3. 在对应图层上铺瓦 / 改 objects
-4. File → Save（保持 JSON 格式；勿只存成 .tmx 却不提交 JSON）
-5. 终端：pnpm gen:assets   # 校验，不应改写任何 PNG/JSON
-6. 终端：EVO_AGENT_CATALOG=… pnpm dev
-7. 浏览器硬刷新，拖相机检查房间、碰撞、出门再回来
-8. 把改过的 .json（若改了瓦片则含 .png）提交进仓库
+2. File → Open → public/assets/maps/company-25.json
+3. 右侧选 tileset1 铺地板；选其它 tileset 摆墙/家具
+4. File → Save（保持 JSON）
+5. pnpm gen:assets
+6. pnpm dev:office → 浏览器硬刷新
+7. 提交改过的 .json / .png
 ```
 
-**反映修改：** Phaser 直接读 `public/assets/maps/*.json`。保存进仓库并刷新开发页即可，无需单独「编译地图」。
+**反映修改：** Phaser 直接读 `public/assets/maps/*.json`，无需编译地图。
 
-工程师若用脚本从零重建地图：[`scripts/build-tiled-maps.mjs`](../scripts/build-tiled-maps.mjs)（会写 JSON）。日常美术改图**不要**依赖该脚本覆盖手摆结果。
+当前 `company-25` 视觉来自 **WA starter**（静态烘焙桌），**不做**运行时动态摆桌。
 
-## 图层约定（本仓）
+## 图层约定（WA 视觉 + 本仓必需）
 
-当前 `company-a` / `outside-stub` 图层如下。`pnpm gen:assets` 至少要求存在：`floor`、`walls`、`furniture`、`collisions`、`start`、`exit`。
+`pnpm gen:assets` 至少要求：`floor`、`walls`、`furniture`、`collisions`、`start`、`exit`。
 
-| 图层名 | 类型 | 美术可改？ | 作用 |
+| 图层名 | 来源 | 美术可改？ | 作用 |
 |--------|------|------------|------|
-| `floor` | tile | 可 | 地板 |
-| `walls` | tile | 可 | 外墙 / 隔断 |
-| `furniture` | tile | 可 | 桌椅等（角色下方） |
-| `aboveFurniture` | tile | 可 | 家具上方装饰 |
-| `abovePlayer1` | tile | 可 | 盖在角色之上（屋顶感） |
-| `collisions` | tile | **可，且必查** | 有瓦片的格子不可走（见下节） |
-| `start` | tile | 慎改 | 默认出生区；至少保留若干格 |
-| `office-door`（仅 company-a） | tile | 慎改 | 命名入口：`startLayer=true`；从外面回来落这里 |
-| `from-office`（仅 outside-stub） | tile | 慎改 | 命名入口：从办公室出来落这里 |
-| `exit` | tile | 慎改 | 踩上切图；层属性见下表 |
-| `objects` | object | 可（工位） | `spawn_*` / `computer_*` 对象 |
+| `floor` | WA | 可 | 地板（用 **tileset1**） |
+| `walls` | WA | 可 | 外墙 / 隔断 |
+| `furniture` | WA | 可 | 桌椅等（角色下方） |
+| `aboveFurniture` | WA | 可 | 家具上方装饰 |
+| `abovePlayer1`…`3` | WA | 可 | 盖在角色之上 |
+| `floorLayer` | WA | 慎改 | WA objectgroup；本仓可不依赖 |
+| `collisions` | WA | **必查** | 有瓦不可走 |
+| `start` | WA | 慎改 | 默认出生 |
+| `office-door` | 本仓 | 慎改 | 命名入口 `startLayer=true` |
+| `exit` | 本仓 | 慎改 | 切图；`exitMap` + `entryName` |
+| `objects` | 本仓 | 可 | `spawn_*` / `computer_*`（company-25 ≥25） |
+
+Jitsi / clock 等 WA 功能层**不导入**（本仓非目标）。
 
 ### exit 层属性（本仓，不是 WA 的 exitUrl）
 
 | 地图 | 层属性 | 含义 |
 |------|--------|------|
-| `company-a` 的 `exit` | `exitMap=outside-stub`，`entryName=from-office` | 出门 → 桩图的 `from-office` |
-| `outside-stub` 的 `exit` | `exitMap=company-a`，`entryName=office-door` | 回来 → 办公室门口 |
+| `company-25` 的 `exit` | `exitMap=outside-stub`，`entryName=from-office` | 出门 → 桩图的 `from-office` |
+| `outside-stub` 的 `exit` | `exitMap=company-25`，`entryName=office-door` | 回来 → 办公室门口 |
 
 `exitMap` 必须是 [`registry.json`](../public/assets/maps/registry.json) 里已有的 id。不要写公网 URL。
 
-### objects（工位）
+### objects（工位，静态）
 
-- 命名：`spawn_0`、`computer_0`、`spawn_1`、`computer_1`…  
-- `company-a` 需足够工位（产品要求 ≥ 21）；人数超额时运行时 hash 复用。  
-- 改工位布局时：成对移动 spawn 与 computer，并保证周围可走、不被 `collisions` 封死。
+**一对工位 = `spawn_N` + `computer_N`（同一数字 N）**
+
+- `company-25` 校验 ≥25 对；美术在 Tiled 里摆好桌子与 objects。
+- 人少：空桌仍在图上（静态图）。人多：hash 复用同一对。
+- **已取消**运行时动态摆桌。
 
 ## 碰撞怎么做
 
-碰撞写在**地图 JSON 里**，游戏读入后建成可行走网格。不需要另装碰撞软件。
+对齐 WorkAdventure：**给瓦片加布尔属性 `collides`**（Custom Properties，不要填 Class）。
 
-### 本仓当前采用：独立 `collisions` 层（方式 B）
+### 共享 tileset（一处打标）
 
-1. 在 Tiled 左侧选中图层 **`collisions`**  
-2. 选用 `Special_Zones`（或任意约定色块瓦片）铺在**不能走**的格子上（墙脚、桌下等）  
-3. 门洞、过道、exit 前方必须留空（`collisions` 为 0）  
-4. 保存后运行时：该层 `gid > 0` → 不可走  
+碰撞属性维护在 [`public/assets/maps/tilesets/*.tsj`](../public/assets/maps/tilesets/)（Tiled JSON tileset），**不是**每张地图各改一遍。
 
-`pnpm gen:assets` 会检查 exit 附近是否仍可接近（避免门被撞死）。
+| 操作 | 命令 / 做法 |
+|------|-------------|
+| 批量补常用墙/会议桌 collides | `pnpm annotate:collides`（写 `.tsj` 再 pack） |
+| 手改 collides | Tiled → File → Open → 打开某个 `tilesets/*.tsj` → Custom Properties 加 `collides` bool |
+| 灌进各地图给 Phaser | `pnpm pack:tilesets`（`gen:assets` 会自动先跑） |
 
-### 可选：瓦片属性 `collides`（方式 A，WA 文档推荐）
+Phaser **不支持** map JSON 里的 `source` 外部 tileset，所以运行时地图必须是 **pack 后的 embedded** 形态。
 
-在 tileset 编辑模式里给墙/桌瓦片加自定义属性 `collides`（bool = true）。本仓运行时若以 `collisions` 层为准，方式 A 可作为补充约定；改之前先与工程师确认 `OfficeScene` 是否已读 tileset 属性。
+### 运行时规则（本仓）
 
-步骤说明（参考，勿拷 WA 代码）：
+一格不可走，当且仅当：
 
-`/Users/peng.zhi/Documents/Object/参考项目/workadventure/docs/map-building/tiled-editor/wa-maps.md`  
-（章节 *Building walls and "collidable" areas*）
+1. 该格 `walls` / `furniture` / `aboveFurniture` / `collisions` 上瓦片的 **`collides === true`**，或  
+2. **`walls` 层** `gid > 0`（兜底），或  
+3. **`collisions` 层** `gid > 0`（补洞）
+
+椅子（如 GID 340）默认不标 `collides`，方便站 spawn。
+
+### 可选补洞：手刷 `collisions`
+
+选 `collisions` → 工具 **`B`（图章）** → `Special_Zones` 的 `BLOCK` → 拖刷。仅用于漏标补洞。
 
 ## 出门 / 回来怎么验
 
 1. `pnpm dev` 打开大屏，拖到公司大门附近  
 2. 等小人踩上 `exit` 瓦片 → 应切到 `outside-stub`，镜头落到 `from-office` / `start`  
-3. 再踩桩图 `exit` → 应回到 `company-a` 的 **`office-door`**，而不是办公室中心  
+3. 再踩桩图 `exit` → 应回到 `company-25` 的 **`office-door`**，而不是办公室中心  
 4. 若黑屏或报「地图未注册」：检查 `exit` 层的 `exitMap` 是否在 `registry.json` 中  
 
 概念参考（字段名用本仓 `exitMap` / `entryName`）：
@@ -149,7 +196,12 @@ WA Inline Map Editor 官方定位是：在**已有地图**上摆家具、画兴�
 ## 相关命令
 
 ```bash
-pnpm gen:assets    # 校验 maps；失败会打印 FAIL；不写 PNG/JSON
-pnpm pack:assets   # 仅组装 Pipoya characters.png
-pnpm dev           # 本地预览
+pnpm gen:assets           # 先 pack:tilesets，再校验 maps
+pnpm pack:tilesets        # 把 tilesets/*.tsj 的 collides 灌进各地图 JSON
+pnpm annotate:collides    # 批量补 .tsj 的 collides，再 pack
+pnpm sync:map-palette     # 从本机 WA maps/assets 再同步 tileset PNG
+pnpm import:wa-company    # 用 WA starter 重置 company-25（结束后会 pack）
+pnpm pack:assets          # 仅组装 Pipoya characters.png
+pnpm dev:office           # 本地预览（推荐）
+pnpm dev                  # 本地预览（需自备 EVO_AGENT_CATALOG）
 ```

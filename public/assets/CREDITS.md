@@ -2,32 +2,29 @@
 
 本目录为游戏运行用切片与地图（**不是** itch / 上游原包 zip）。
 
-## 运行时文件（当前）
+## 运行时文件
 
 | 文件 / 目录 | 说明 |
 |---|---|
-| `maps/company-a.json` | 公司主图（Tiled 正交 32×32，多层） |
+| `maps/company-25.json` | 公司主图（≤25 人，WA starter 静态桌） |
 | `maps/outside-stub.json` | 室外/园区桩图（往返办公室） |
 | `maps/registry.json` | 地图 id 注册表（与 `src/game/mapRegistry.ts` 对齐） |
-| `maps/tilesets/*.png` | WA 风 32×32 瓦片图（CC-BY-SA 3.0） |
+| `maps/tilesets/*.png` | WA 风 32×32 瓦片图（地板在 **tileset1.png**；CC-BY-SA 3.0） |
+| `maps/tilesets/*.tsj` | 共享 Tiled tileset（`collides` 一处维护；`pnpm pack:tilesets` 灌进地图） |
+| `maps/tilesets/skins/*.png` | WA starter 皮肤色块（调色板备用，默认未挂进运行时 tileset 列表） |
+| `maps/reference/` | WA starter / chatzone / collections 对照（不进游戏） |
 | `characters.png` | Pipoya 64 套 × 四向 × 3 帧行走 atlas（12 列 × 64 行） |
 
-## 历史 / 停用（可留仓，运行时不再加载）
-
-| 文件 | 说明 |
-|---|---|
-| `office.png` + `office_core_atlas.json` | 旧斜侧 atlas 办公室 |
-| `office-layout.json` / `office-frame-roles.json` | 旧程序布局 |
-| `office.json` / `tileset.png` | 更早 Desk Essentials 试验 |
+旧 atlas 办公室（`office.png` / `office-layout.json` 等）已从仓库删除。
 
 ## 组装与校验
 
 ### 地图
 
-布局由 `scripts/build-tiled-maps.mjs` 生成（可重跑）。日常门禁：
+主图视觉：`pnpm import:wa-company`（从 WA starter 导入）。日常改图用 Tiled 保存 JSON。日常门禁：
 
 ```bash
-pnpm gen:assets   # 只校验 Tiled 图层 / exit / spawn；不覆盖任何 PNG
+pnpm gen:assets   # pack tilesets/*.tsj → 校验图层 / exit / spawn；不覆盖 PNG
 ```
 
 ### Pipoya 角色
@@ -47,7 +44,7 @@ pnpm pack:assets   # → characters.png
 - 许可：[CC-BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/)
 - 约束：衍生地图须 share-alike；**禁止**将瓦片作为独立素材包再分发；本仓库仅含游戏切片与自绘布局 JSON，**未**复制 WorkAdventure `play/` 后端或 AGPL 源码。
 
-本仓地图布局（`company-a` / `outside-stub`）为 evo-agent-team 自绘，瓦片仍遵循上游 CC-BY-SA。
+`company-25` 视觉层基于 WA starter `maps/starter/map.json`（CC-BY-SA）；本仓追加 exit / 命名入口 / objects。`outside-stub` 为自绘桩图。未复制 WorkAdventure `play/` AGPL 源码；`reference/collections/` 仅供对照。
 
 ### PIPOYA FREE RPG Character Sprites 32x32
 
@@ -57,4 +54,4 @@ pnpm pack:assets   # → characters.png
 
 ### （历史）办公室 atlas / Pixel Life
 
-早期曾用维护者提供的 `office.png` atlas，以及 [Chris Perich / Pixel Life](https://christianperich.itch.io/pixel-life-office-essentials)（CC BY 4.0）试验瓦片。当前运行路径已改为 Tiled + WA 风瓦片，不再加载上述文件。
+早期曾用维护者提供的 office atlas，以及 [Chris Perich / Pixel Life](https://christianperich.itch.io/pixel-life-office-essentials)（CC BY 4.0）试验瓦片。当前运行路径为 Tiled + WA 风瓦片，相关文件已删除。

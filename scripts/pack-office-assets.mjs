@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
  * Assemble characters.png from Pipoya vendor (64 skins).
- * Office furniture atlas (office.png + office_core_atlas.json) is maintained separately —
- * this script does NOT touch office atlas or tileset.png.
+ * Does NOT touch maps/ or tileset PNGs.
  *
  *   temp/vendor/pipoya/<manifest paths>
  * Env: EVO_VENDOR_PIPOYA
@@ -212,4 +211,4 @@ fs.mkdirSync(outDir, { recursive: true })
 fs.writeFileSync(path.join(outDir, 'characters.png'), encodePng(atlasW, atlasH, atlas))
 console.log('Packed characters.png ->', outDir)
 console.log('  characters: 12x64 @32px (Pipoya 64 skins)')
-console.log('  (office.png atlas is separate; not modified)')
+console.log('  (maps/tilesets untouched)')

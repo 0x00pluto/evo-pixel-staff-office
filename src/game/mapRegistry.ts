@@ -5,6 +5,8 @@ export interface MapEntry {
   /** Absolute URL path served from public/ */
   json: string
   label: string
+  /** Soft headcount this art is sized for (documentation / future select). */
+  headcountMax?: number
 }
 
 export interface TilesetEntry {
@@ -15,11 +17,20 @@ export interface TilesetEntry {
   url: string
 }
 
+/** ≤10 / ≤25 / ≤100 tiers; only company-25 is shipped this round. */
+export const OFFICE_TIER_IDS = {
+  /** Reserved — falls back to company-25 until art exists */
+  s10: 'company-10',
+  m25: 'company-25',
+  l100: 'company-100',
+} as const
+
 export const MAP_REGISTRY: Record<string, MapEntry> = {
-  'company-a': {
-    id: 'company-a',
-    json: '/assets/maps/company-a.json',
-    label: 'Company A Office',
+  'company-25': {
+    id: 'company-25',
+    json: '/assets/maps/company-25.json',
+    label: 'Office (≤25)',
+    headcountMax: 25,
   },
   'outside-stub': {
     id: 'outside-stub',
@@ -28,7 +39,7 @@ export const MAP_REGISTRY: Record<string, MapEntry> = {
   },
 }
 
-export const DEFAULT_MAP_ID = 'company-a'
+export const DEFAULT_MAP_ID = 'company-25'
 
 export const TILESET_ASSETS: TilesetEntry[] = [
   {
@@ -64,4 +75,17 @@ export function getMapEntry(id: string): MapEntry | undefined {
 
 export function isRegisteredMapId(id: string): boolean {
   return Object.prototype.hasOwnProperty.call(MAP_REGISTRY, id)
+}
+
+/**
+ * Pick office map by headcount.
+ * Thresholds: ≤10 → company-10 (fallback 25), ≤25 → company-25, ≤100 → company-100 (fallback 25).
+ * This round only company-25 exists; all tiers resolve to it.
+ */
+export function selectOfficeMapId(agentCount: number): string {
+  const n = Math.max(0, agentCount)
+  if (n <= 10 && isRegisteredMapId(OFFICE_TIER_IDS.s10)) return OFFICE_TIER_IDS.s10
+  if (n <= 25) return OFFICE_TIER_IDS.m25
+  if (n <= 100 && isRegisteredMapId(OFFICE_TIER_IDS.l100)) return OFFICE_TIER_IDS.l100
+  return OFFICE_TIER_IDS.m25
 }
