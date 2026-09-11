@@ -1,44 +1,53 @@
 # 像素素材说明
 
-本目录为游戏运行用切片与 atlas（**不是** itch 原包 zip/rar）。
+本目录为游戏运行用切片与地图（**不是** itch / 上游原包 zip）。
 
-## 文件
+## 运行时文件（当前）
+
+| 文件 / 目录 | 说明 |
+|---|---|
+| `maps/company-a.json` | 公司主图（Tiled 正交 32×32，多层） |
+| `maps/outside-stub.json` | 室外/园区桩图（往返办公室） |
+| `maps/registry.json` | 地图 id 注册表（与 `src/game/mapRegistry.ts` 对齐） |
+| `maps/tilesets/*.png` | WA 风 32×32 瓦片图（CC-BY-SA 3.0） |
+| `characters.png` | Pipoya 64 套 × 四向 × 3 帧行走 atlas（12 列 × 64 行） |
+
+## 历史 / 停用（可留仓，运行时不再加载）
 
 | 文件 | 说明 |
 |---|---|
-| `office.png` | 办公室家具 TexturePacker 风格雪碧图（1254×1254） |
-| `office_core_atlas.json` | Hash atlas（`office_core_001`…），供 Phaser `load.atlas` |
-| `office-frame-roles.json` | 语义角色 → 帧名映射（地板/墙/桌/植物等） |
-| `office-layout.json` | 分区办公室摆件、碰撞、spawn / computer |
-| `characters.png` | Pipoya 64 套 × 四向 × 3 帧行走 atlas（12 列 × 64 行） |
+| `office.png` + `office_core_atlas.json` | 旧斜侧 atlas 办公室 |
+| `office-layout.json` / `office-frame-roles.json` | 旧程序布局 |
+| `office.json` / `tileset.png` | 更早 Desk Essentials 试验 |
 
-旧版 `tileset.png` / `office.json`（Desk Essentials 瓦片地图）已弃用，可忽略。
+## 组装与校验
 
-## 组装与生成
+### 地图
 
-### 办公室 atlas
-
-将 `office.png` 与 `office_core_atlas.json` 放入本目录（`meta.image` 须为 `office.png`）。改角色映射后重跑：
+布局由 `scripts/build-tiled-maps.mjs` 生成（可重跑）。日常门禁：
 
 ```bash
-pnpm gen:assets
+pnpm gen:assets   # 只校验 Tiled 图层 / exit / spawn；不覆盖任何 PNG
 ```
-
-只写出 `office-layout.json`，**不会**覆盖 `office.png` / `characters.png`。
 
 ### Pipoya 角色
 
 原包解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA`），清单见 `scripts/pipoya-64-manifest.txt`：
 
 ```bash
-pnpm pack:assets
+pnpm pack:assets   # → characters.png
 ```
 
 ## 署名与许可
 
-### 办公室 atlas（`office.png`）
+### WorkAdventure starter 瓦片（`maps/tilesets/`）
 
-本仓库使用的办公室雪碧图 / atlas 由维护者提供并入库为游戏切片。请在分发时保留本 CREDITS；勿将雪碧图作为独立素材包再分发（若上游另有条款，以其为准）。
+- 作者：[Valdo Romao](https://www.linkedin.com/in/valdo-romao/)
+- 来源：[WorkAdventure](https://github.com/workadventure/workadventure) starter maps assets（`maps/assets/*.png`）
+- 许可：[CC-BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/)
+- 约束：衍生地图须 share-alike；**禁止**将瓦片作为独立素材包再分发；本仓库仅含游戏切片与自绘布局 JSON，**未**复制 WorkAdventure `play/` 后端或 AGPL 源码。
+
+本仓地图布局（`company-a` / `outside-stub`）为 evo-agent-team 自绘，瓦片仍遵循上游 CC-BY-SA。
 
 ### PIPOYA FREE RPG Character Sprites 32x32
 
@@ -46,6 +55,6 @@ pnpm pack:assets
 - 页面：[PIPOYA FREE RPG Character Sprites 32x32](https://pipoya.itch.io/pipoya-free-rpg-character-sprites-32x32)
 - 许可：可个人/商业使用与修改；**禁止**再分发或转售素材本体；本仓库仅含组装后的 atlas 切片。
 
-### （历史）Pixel Life Desk Essentials
+### （历史）办公室 atlas / Pixel Life
 
-早期原型曾用 [Chris Perich / Pixel Life](https://christianperich.itch.io/pixel-life-office-essentials)（CC BY 4.0）生成临时瓦片；当前运行路径已改用 `office.png` atlas，不再依赖 Desk Essentials。
+早期曾用维护者提供的 `office.png` atlas，以及 [Chris Perich / Pixel Life](https://christianperich.itch.io/pixel-life-office-essentials)（CC BY 4.0）试验瓦片。当前运行路径已改为 Tiled + WA 风瓦片，不再加载上述文件。

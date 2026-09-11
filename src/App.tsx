@@ -112,8 +112,11 @@ export default function App() {
             role="alert"
             className="absolute inset-x-4 top-4 z-30 mx-auto max-w-xl rounded-md border border-rose-500/60 bg-rose-950/95 px-4 py-3 text-sm text-rose-100 shadow-lg"
           >
-            <div className="font-semibold tracking-wide">办公室素材无法加载</div>
+            <div className="font-semibold tracking-wide">地图 / 素材无法加载</div>
             <p className="mt-1 text-xs leading-relaxed text-rose-200/90">{assetsError}</p>
+            <p className="mt-2 text-[10px] text-rose-300/80">
+              检查 public/assets/maps（company-a / outside-stub JSON + tilesets）与 characters.png；切图目标须在地图注册表中。
+            </p>
           </div>
         ) : null}
         <div className="pointer-events-none absolute bottom-2 left-3 z-20 text-[10px] text-stone-500">

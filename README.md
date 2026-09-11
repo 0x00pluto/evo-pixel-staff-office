@@ -5,7 +5,7 @@
 ## 技术栈
 
 - Vite + React + TypeScript + Tailwind CSS
-- Phaser 4（像素办公室 / 小人 FSM）
+- Phaser 4（Tiled 多层办公室 / 小人 FSM）
 - 本地 Node CLI（读花名册 + 静态托管）
 - 包管理：**pnpm**
 
@@ -21,28 +21,40 @@ pnpm install
 
 ### 像素素材
 
-办公室家具用入库的 TexturePacker atlas：
+办公室世界用 Tiled JSON + 32×32 瓦片：
 
-- `public/assets/office.png` + `office_core_atlas.json`
-- 布局由 `pnpm gen:assets` 生成 `office-layout.json`（不覆盖 PNG）
+- `public/assets/maps/company-a.json` / `outside-stub.json`
+- `public/assets/maps/tilesets/*.png`（CC-BY-SA 3.0，见 CREDITS）
+- 校验：`pnpm gen:assets`（**不**覆盖 PNG）
 
 Pipoya 角色原包解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA`），组装：
 
 ```bash
 pnpm pack:assets   # → characters.png
-pnpm gen:assets    # → office-layout.json
+pnpm gen:assets    # 校验 Tiled 地图；不写 PNG
+```
+
+需要重建地图布局时：
+
+```bash
+node scripts/build-tiled-maps.mjs
 ```
 
 署名与许可见 [`public/assets/CREDITS.md`](public/assets/CREDITS.md)。
+
 ## 开发
 
 指定花名册路径后启动 Vite（开发态 `/api/catalog` 与 CLI 同源）：
 
 ```bash
+# 推荐：带默认花名册 + Vite --force（避免旧依赖缓存）
+pnpm dev:office
+
+# 或显式指定花名册
 EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json pnpm dev
 ```
 
-浏览器打开终端提示的本地地址（默认 `http://localhost:5173`）。
+浏览器打开终端提示的本地地址（默认 `http://localhost:5173`），**请硬刷新**（Cmd+Shift+R）以免仍看到旧 atlas 办公室。
 
 ## 一键预览（构建后）
 
@@ -66,6 +78,7 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 - 拖拽：移动相机
 - 滚轮：缩放
 - 点击小人 / 名牌：右侧详情卡
+- 点击大门 / 回门区域：办公室 ↔ 室外桩图
 - 顶栏「刷新花名册」：重新读取 JSON
 
 ## 数据约定
@@ -74,14 +87,15 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 - `name` ← `title` 中 `—` 前半段
 - `status` ← experiment / `owns[0]` / `blurb` 截断 /「待命」
 - 数据源接口为 `CatalogSource`（v1 = `JsonFileSource`），便于以后换 SQLite / Postgres
+- 地图用静态 id 注册（`company-a`、`outside-stub`）；花名册**不加** company 字段
 
 ## 目录
 
 ```
 src/catalog/   类型与映射
 src/cli/       CatalogSource、静态服务、Vite 插件
-src/game/      Phaser 办公室与小人 FSM
+src/game/      Phaser 办公室、地图注册表与小人 FSM
 src/ui/        名牌、详情卡、工具条
-public/assets/ 像素素材与 CREDITS
+public/assets/ 像素素材、maps/、CREDITS
 bin/           pixel-office CLI
 ```

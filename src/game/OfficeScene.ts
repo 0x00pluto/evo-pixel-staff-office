@@ -1,33 +1,46 @@
 import Phaser from 'phaser'
 import type { AgentPersona } from '../catalog/types'
 import { hashPick, nextMode, type AgentRuntime } from './agentFsm'
+import {
+  DEFAULT_MAP_ID,
+  getMapEntry,
+  isRegisteredMapId,
+  MAP_REGISTRY,
+  TILESET_ASSETS,
+} from './mapRegistry'
 import type { NameplateView, OfficeGameCallbacks } from './types'
 
 const TILE = 32
-const CHAR_SCALE = 2
+const CHAR_SCALE = 1
 const CELL = TILE * CHAR_SCALE
-const SPEED = 40
+const SPEED = 55
 const SKIN_COUNT = 64
 
 type Point = { x: number; y: number }
 
-interface LayoutFurniture {
-  frame: string
-  x: number
-  y: number
-  role?: string
-  collide?: boolean
+type ExitZone = {
+  exitMap: string
+  entryName: string
+  cells: Set<string>
 }
 
-interface OfficeLayout {
-  cell: number
-  width: number
-  height: number
-  floor: { frame: string; altFrame?: string }
-  furniture: LayoutFurniture[]
-  collision: number[]
-  spawns: Point[]
-  computers: Point[]
+function cellKey(tx: number, ty: number) {
+  return `${tx},${ty}`
+}
+
+function layerProp(
+  layer: Phaser.Tilemaps.LayerData | undefined,
+  name: string,
+): string | boolean | number | undefined {
+  const props = layer?.properties as
+    | Array<{ name: string; value: string | boolean | number }>
+    | Record<string, string | boolean | number>
+    | undefined
+  if (!props) return undefined
+  if (Array.isArray(props)) {
+    return props.find((p) => p.name === name)?.value
+  }
+  return props[name]
 }
 
 export class OfficeScene extends Phaser.Scene {
@@ -41,11 +54,18 @@ export class OfficeScene extends Phaser.Scene {
   private computers: Point[] = []
   private sprites = new Map<string, Phaser.GameObjects.Sprite>()
   private runtimes = new Map<string, AgentRuntime>()
-  private furnitureSprites: Phaser.GameObjects.Image[] = []
   private drag = false
   private dragLast = new Phaser.Math.Vector2()
   private _lastPlateAt = 0
   private assetsFailed = false
+  private currentMapId = DEFAULT_MAP_ID
+  private tilemap: Phaser.Tilemaps.Tilemap | null = null
+  private mapLayers: Array<{ destroy: () => void; setDepth: (d: number) => unknown }> = []
+  private exitZones: ExitZone[] = []
+  private exitCooldownUntil = 0
+  private switching = false
+  /** Min zoom so the map always covers the viewport (no dark gutters). */
+  private coverZoom = 1
 
   constructor() {
     super('OfficeScene')
@@ -62,12 +82,16 @@ export class OfficeScene extends Phaser.Scene {
       const key = file?.key ?? 'unknown'
       const url = typeof file?.url === 'string' ? file.url : String(file?.url ?? '')
       this.callbacks.onAssetsError?.(
-        `素材加载失败：${key}${url ? `（${url}）` : ''}。请确认 public/assets 下有 office.png / office_core_atlas.json / office-layout.json / characters.png。`,
+        `素材加载失败：${key}${url ? `（${url}）` : ''}。请确认 public/assets/maps 下有 Tiled JSON / tileset PNG，以及 characters.png。`,
       )
     })
 
-    this.load.atlas('office_core', '/assets/office.png', '/assets/office_core_atlas.json')
-    this.load.json('office_layout', '/assets/office-layout.json')
+    for (const ts of TILESET_ASSETS) {
+      this.load.image(ts.key, ts.url)
+    }
+    for (const entry of Object.values(MAP_REGISTRY)) {
+      this.load.tilemapTiledJSON(entry.id, entry.json)
+    }
     this.load.spritesheet('characters', '/assets/characters.png', {
       frameWidth: TILE,
       frameHeight: TILE,
@@ -76,41 +100,29 @@ export class OfficeScene extends Phaser.Scene {
 
   create() {
     if (this.assetsFailed) return
-    if (
-      !this.textures.exists('office_core') ||
-      !this.textures.exists('characters') ||
-      !this.cache.json.exists('office_layout')
-    ) {
+    if (!this.textures.exists('characters')) {
       this.assetsFailed = true
       this.callbacks.onAssetsError?.(
-        '素材缺失：office atlas / characters / office-layout 未能进入缓存。请检查 public/assets。',
+        '素材缺失：characters.png 未能进入缓存。请检查 public/assets 并运行 pnpm pack:assets。',
       )
       return
     }
 
-    const layout = this.cache.json.get('office_layout') as OfficeLayout
-    this.cell = layout.cell || CELL
-    this.mapW = layout.width
-    this.mapH = layout.height
-    this.collision = Array.from({ length: this.mapH }, (_, y) =>
-      Array.from({ length: this.mapW }, (_, x) => {
-        const v = layout.collision[y * this.mapW + x]
-        return v > 0
-      }),
-    )
+    this.setupCameraInput()
+    this.ensureAnims()
 
-    this.paintFloor(layout)
-    this.spawnFurniture(layout.furniture)
+    const ok = this.mountMap(this.currentMapId, 'start')
+    if (!ok) return
+    this.spawnAgents(this.agents, 'start')
+  }
 
-    this.spawns = (layout.spawns ?? []).map((p) => ({ x: p.x, y: p.y }))
-    this.computers = (layout.computers ?? []).map((p) => ({ x: p.x, y: p.y }))
+  reloadAgents(agents: AgentPersona[]) {
+    this.agents = agents
+    this.clearAgents()
+    if (!this.assetsFailed && this.tilemap) this.spawnAgents(agents, null)
+  }
 
-    const worldW = this.mapW * this.cell
-    const worldH = this.mapH * this.cell
-    this.cameras.main.setBounds(0, 0, worldW, worldH)
-    this.cameras.main.centerOn(worldW / 2, worldH / 2)
-    this.cameras.main.setRoundPixels(true)
-
+  private setupCameraInput() {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.rightButtonDown() || p.middleButtonDown()) return
       this.drag = true
@@ -135,62 +147,261 @@ export class OfficeScene extends Phaser.Scene {
         dy: number,
       ) => {
         const cam = this.cameras.main
-        const next = Phaser.Math.Clamp(cam.zoom - dy * 0.001, 0.6, 2.2)
+        const next = Phaser.Math.Clamp(
+          cam.zoom - dy * 0.001,
+          this.coverZoom,
+          2.2,
+        )
         cam.setZoom(next)
       },
     )
-
-    this.ensureAnims()
-    this.spawnAgents(this.agents)
-
+    this.scale.on('resize', () => {
+      if (!this.assetsFailed && this.tilemap) this.fitCameraToMap(true)
+    })
     this.input.on(
       'pointerdown',
       (p: Phaser.Input.Pointer, currentlyOver: Phaser.GameObjects.GameObject[]) => {
         if (!p.leftButtonDown()) return
-        if (!currentlyOver.length) this.callbacks.onSelect(null)
+        if (currentlyOver.length) return
+        this.callbacks.onSelect(null)
+        // Click door/exit tiles to switch maps (dashboard demo + S2 UI-click)
+        if (this.assetsFailed || this.switching) return
+        if (this.time.now < this.exitCooldownUntil) return
+        const world = this.cameras.main.getWorldPoint(p.x, p.y)
+        const hit = this.exitAt(world.x, world.y)
+        if (hit) this.switchMap(hit.exitMap, hit.entryName)
       },
     )
   }
 
-  reloadAgents(agents: AgentPersona[]) {
-    this.agents = agents
+  private destroyMapLayers() {
+    for (const layer of this.mapLayers) layer.destroy()
+    this.mapLayers = []
+    if (this.tilemap) {
+      this.tilemap.destroy()
+      this.tilemap = null
+    }
+    this.exitZones = []
+    this.collision = []
+    this.spawns = []
+    this.computers = []
+  }
+
+  private clearAgents() {
     for (const s of this.sprites.values()) s.destroy()
     this.sprites.clear()
     this.runtimes.clear()
-    if (!this.assetsFailed) this.spawnAgents(agents)
   }
 
-  private paintFloor(layout: OfficeLayout) {
-    const frame = layout.floor?.frame || 'office_core_014'
-    const alt = layout.floor?.altFrame || frame
-    for (let y = 0; y < this.mapH; y++) {
-      for (let x = 0; x < this.mapW; x++) {
-        const useAlt = (x + y) % 7 === 0
-        const key = useAlt ? alt : frame
-        if (!this.textures.get('office_core').has(key)) continue
-        const img = this.add.image(
-          x * this.cell + this.cell / 2,
-          y * this.cell + this.cell / 2,
-          'office_core',
-          key,
-        )
-        img.setDisplaySize(this.cell + 2, this.cell + 2)
-        img.setDepth(0)
+  /** Mount tilemap by registry id; returns false on failure (sets page error). */
+  private mountMap(mapId: string, entryName: string | null): boolean {
+    if (!isRegisteredMapId(mapId)) {
+      this.assetsFailed = true
+      this.callbacks.onAssetsError?.(
+        `地图未注册：exitMap「${mapId}」不在地图注册表中（仅允许 ${Object.keys(MAP_REGISTRY).join(', ')}）。`,
+      )
+      return false
+    }
+
+    const entry = getMapEntry(mapId)!
+    if (!this.cache.tilemap.exists(mapId)) {
+      this.assetsFailed = true
+      this.callbacks.onAssetsError?.(
+        `地图 JSON 缺失：${mapId}（${entry.json}）未能进入缓存。请检查 public/assets/maps。`,
+      )
+      return false
+    }
+
+    this.destroyMapLayers()
+
+    const map = this.make.tilemap({ key: mapId })
+    this.tilemap = map
+    this.currentMapId = mapId
+    this.mapW = map.width
+    this.mapH = map.height
+    this.cell = map.tileWidth || CELL
+
+    const tilesets: Phaser.Tilemaps.Tileset[] = []
+    for (const ts of TILESET_ASSETS) {
+      const added = map.addTilesetImage(ts.name, ts.key)
+      if (added) tilesets.push(added)
+    }
+    if (!tilesets.length) {
+      this.assetsFailed = true
+      this.callbacks.onAssetsError?.(
+        `地图 ${mapId} 未能绑定 tileset 贴图。请检查 public/assets/maps/tilesets。`,
+      )
+      return false
+    }
+
+    const depthFor = (name: string): number => {
+      if (name === 'floor') return 0
+      if (name === 'walls') return 1
+      if (name === 'furniture') return 2
+      if (name === 'aboveFurniture') return 3
+      if (name.startsWith('abovePlayer') || name.startsWith('above')) return 10_000
+      return 1
+    }
+
+    const visibleNames = [
+      'floor',
+      'walls',
+      'furniture',
+      'aboveFurniture',
+      'abovePlayer1',
+      'abovePlayer2',
+      'abovePlayer3',
+    ]
+    for (const name of visibleNames) {
+      if (!map.getLayer(name)) continue
+      const layer = map.createLayer(name, tilesets, 0, 0)
+      if (!layer) continue
+      layer.setDepth(depthFor(name))
+      this.mapLayers.push(layer)
+    }
+
+    // Collision from collisions layer (any non-zero gid)
+    const colLayer = map.getLayer('collisions')
+    this.collision = Array.from({ length: this.mapH }, (_, y) =>
+      Array.from({ length: this.mapW }, (_, x) => {
+        if (!colLayer) return false
+        const tile = map.getTileAt(x, y, true, 'collisions')
+        return !!(tile && tile.index > 0)
+      }),
+    )
+
+    this.exitZones = this.parseExitZones(map)
+    this.parseObjects(map)
+
+    const worldW = this.mapW * this.cell
+    const worldH = this.mapH * this.cell
+    this.cameras.main.setBounds(0, 0, worldW, worldH)
+    this.cameras.main.setRoundPixels(true)
+
+    this.fitCameraToMap(false)
+    const focus = this.resolveEntryPoint(map, entryName)
+    this.cameras.main.centerOn(focus.x, focus.y)
+
+    return true
+  }
+
+  /** Cover zoom: map fills viewport; never allow zoom-out past gutters. */
+  private fitCameraToMap(keepRelativeZoom: boolean) {
+    const cam = this.cameras.main
+    const worldW = this.mapW * this.cell
+    const worldH = this.mapH * this.cell
+    if (worldW <= 0 || worldH <= 0) return
+
+    const viewW = cam.width || this.scale.width || 1
+    const viewH = cam.height || this.scale.height || 1
+    this.coverZoom = Math.max(viewW / worldW, viewH / worldH)
+
+    if (!keepRelativeZoom) {
+      cam.setZoom(this.coverZoom)
+      cam.centerOn(worldW / 2, worldH / 2)
+      return
+    }
+
+    const midX = cam.scrollX + viewW / (2 * cam.zoom)
+    const midY = cam.scrollY + viewH / (2 * cam.zoom)
+    const next = Math.max(cam.zoom, this.coverZoom)
+    cam.setZoom(Phaser.Math.Clamp(next, this.coverZoom, 2.2))
+    cam.centerOn(midX, midY)
+  }
+
+  private parseExitZones(map: Phaser.Tilemaps.Tilemap): ExitZone[] {
+    const zones: ExitZone[] = []
+    for (const layerData of map.layers) {
+      if (layerData.name !== 'exit' && !layerData.name.startsWith('exit')) continue
+      const exitMap = String(layerProp(layerData, 'exitMap') ?? '')
+      const entryName = String(layerProp(layerData, 'entryName') ?? 'start')
+      if (!exitMap) continue
+      const cells = new Set<string>()
+      for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+          const tile = map.getTileAt(x, y, true, layerData.name)
+          if (tile && tile.index > 0) cells.add(cellKey(x, y))
+        }
       }
+      if (cells.size) zones.push({ exitMap, entryName, cells })
+    }
+    return zones
+  }
+
+  private parseObjects(map: Phaser.Tilemaps.Tilemap) {
+    this.spawns = []
+    this.computers = []
+    for (const obj of map.getObjectLayer('objects')?.objects ?? []) {
+      const name = obj.name || ''
+      const x = obj.x ?? 0
+      const y = obj.y ?? 0
+      if (name.startsWith('spawn_')) this.spawns.push({ x, y })
+      if (name.startsWith('computer_')) this.computers.push({ x, y })
     }
   }
 
-  private spawnFurniture(items: LayoutFurniture[]) {
-    for (const img of this.furnitureSprites) img.destroy()
-    this.furnitureSprites = []
-
-    for (const item of items) {
-      if (!this.textures.get('office_core').has(item.frame)) continue
-      const img = this.add.image(item.x, item.y, 'office_core', item.frame)
-      img.setOrigin(0.5, 1)
-      img.setDepth(item.y)
-      this.furnitureSprites.push(img)
+  private resolveEntryPoint(
+    map: Phaser.Tilemaps.Tilemap,
+    entryName: string | null,
+  ): Point {
+    const tryLayer = (name: string): Point | null => {
+      if (!map.getLayer(name)) return null
+      const pts: Point[] = []
+      for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+          const tile = map.getTileAt(x, y, true, name)
+          if (tile && tile.index > 0) {
+            pts.push({
+              x: x * this.cell + this.cell / 2,
+              y: y * this.cell + this.cell / 2,
+            })
+          }
+        }
+      }
+      if (!pts.length) return null
+      return pts[Math.floor(Math.random() * pts.length)]
     }
+
+    if (entryName && entryName !== 'start') {
+      const named = tryLayer(entryName)
+      if (named) return named
+      console.warn(
+        `[OfficeScene] 命名入口「${entryName}」缺失，回退默认 start（map=${this.currentMapId}）`,
+      )
+    }
+
+    const start = tryLayer('start')
+    if (start) return start
+
+    if (this.spawns.length) return this.spawns[0]
+    return {
+      x: this.cell * 2,
+      y: this.cell * 2,
+    }
+  }
+
+  private switchMap(exitMap: string, entryName: string) {
+    if (this.switching || this.assetsFailed) return
+    if (!isRegisteredMapId(exitMap)) {
+      this.callbacks.onAssetsError?.(
+        `切图失败：exitMap「${exitMap}」未注册。当前图：${this.currentMapId}。`,
+      )
+      return
+    }
+
+    this.switching = true
+    this.callbacks.onSelect(null)
+    this.clearAgents()
+
+    const ok = this.mountMap(exitMap, entryName)
+    if (!ok) {
+      this.switching = false
+      return
+    }
+
+    this.spawnAgents(this.agents, entryName)
+    this.exitCooldownUntil = this.time.now + 1200
+    this.switching = false
   }
 
   private ensureAnims() {
@@ -216,11 +427,23 @@ export class OfficeScene extends Phaser.Scene {
     }
   }
 
-  private spawnAgents(agents: AgentPersona[]) {
-    agents.forEach((persona) => {
+  private spawnAgents(agents: AgentPersona[], entryName: string | null) {
+    const entryPoint =
+      this.tilemap && entryName
+        ? this.resolveEntryPoint(this.tilemap, entryName)
+        : null
+
+    agents.forEach((persona, i) => {
       let spawn: Point = { x: this.cell * 2, y: this.cell * 2 }
-      if (this.spawns.length) {
+      if (entryPoint && i === 0) {
+        spawn = entryPoint
+      } else if (this.spawns.length) {
         spawn = hashPick(persona.id, this.spawns)
+      } else if (entryPoint) {
+        spawn = {
+          x: entryPoint.x + ((i % 5) - 2) * 8,
+          y: entryPoint.y + Math.floor(i / 5) * 8,
+        }
       }
 
       const skin = ((persona.skin % SKIN_COUNT) + SKIN_COUNT) % SKIN_COUNT
@@ -254,14 +477,14 @@ export class OfficeScene extends Phaser.Scene {
     const tx = Math.floor(wx / this.cell)
     const ty = Math.floor(wy / this.cell)
     if (tx < 0 || ty < 0 || tx >= this.mapW || ty >= this.mapH) return false
-    return !this.collision[ty][tx]
+    return !this.collision[ty]?.[tx]
   }
 
   private randomWalkTarget(): Point {
     for (let n = 0; n < 40; n++) {
-      const tx = 1 + Math.floor(Math.random() * (this.mapW - 2))
-      const ty = 1 + Math.floor(Math.random() * (this.mapH - 2))
-      if (!this.collision[ty][tx]) {
+      const tx = 1 + Math.floor(Math.random() * Math.max(1, this.mapW - 2))
+      const ty = 1 + Math.floor(Math.random() * Math.max(1, this.mapH - 2))
+      if (!this.collision[ty]?.[tx]) {
         return {
           x: tx * this.cell + this.cell / 2,
           y: ty * this.cell + this.cell / 2,
@@ -272,7 +495,7 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
-    if (this.assetsFailed) return
+    if (this.assetsFailed || this.switching) return
     const now = this.time.now
     const plates: NameplateView[] = []
     const cam = this.cameras.main
@@ -314,6 +537,14 @@ export class OfficeScene extends Phaser.Scene {
 
       sprite.setDepth(sprite.y)
 
+      if (now >= this.exitCooldownUntil) {
+        const hit = this.exitAt(sprite.x, sprite.y - this.cell * 0.25)
+        if (hit) {
+          this.switchMap(hit.exitMap, hit.entryName)
+          return
+        }
+      }
+
       const sx = (sprite.x - cam.worldView.x) * cam.zoom
       const sy = (sprite.y - cam.worldView.y) * cam.zoom
 
@@ -336,6 +567,16 @@ export class OfficeScene extends Phaser.Scene {
       this._lastPlateAt = now
       this.callbacks.onNameplates(plates)
     }
+  }
+
+  private exitAt(wx: number, wy: number): ExitZone | null {
+    const tx = Math.floor(wx / this.cell)
+    const ty = Math.floor(wy / this.cell)
+    const key = cellKey(tx, ty)
+    for (const zone of this.exitZones) {
+      if (zone.cells.has(key)) return zone
+    }
+    return null
   }
 
   private near(x: number, y: number, tx: number, ty: number, eps: number) {
