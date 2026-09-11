@@ -89,7 +89,7 @@ export default function App() {
   }, [applyPayload])
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#1a1f2b] text-stone-100">
+    <div className="relative h-screen w-screen overflow-hidden bg-[#1a1f2b]">
       <Toolbar
         agentCount={agents.length}
         sourcePath={sourcePath}
@@ -110,9 +110,9 @@ export default function App() {
         {assetsError ? (
           <div
             role="alert"
-            className="absolute inset-x-4 top-4 z-30 mx-auto max-w-xl rounded-md border border-rose-500/60 bg-rose-950/95 px-4 py-3 text-sm text-rose-100 shadow-lg"
+            className="hud-panel hud-panel--danger absolute inset-x-4 top-4 z-30 mx-auto max-w-xl px-4 py-3 text-sm"
           >
-            <div className="font-semibold tracking-wide">地图 / 素材无法加载</div>
+            <div className="tracking-wide">地图 / 素材无法加载</div>
             <p className="mt-1 text-xs leading-relaxed text-rose-200/90">{assetsError}</p>
             <p className="mt-2 text-[10px] text-rose-300/80">
               检查 public/assets/maps（company-25 / outside-stub JSON + tilesets）与 characters.png；切图目标须在地图注册表中。

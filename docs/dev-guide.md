@@ -211,15 +211,17 @@ pnpm build
 - `destroy()`：卸载时销毁游戏
 - 回调：`onSelect`、`onNameplates`、`onAssetsError`
 
-名牌坐标由 Phaser 每帧算出屏幕位置，再交给 React [`NameplateLayer`](../src/ui/NameplateLayer.tsx) 渲染。
+名牌坐标由 Phaser 每帧算出屏幕位置，再交给 React [`NameplateLayer`](../src/ui/NameplateLayer.tsx) 渲染（常显名字 + 截断状态；像素 HUD 皮肤在 [`src/index.css`](../src/index.css)）。每个小人有脚底椭圆阴影，随 `clearAgents` / 切图销毁，**不**启用 Phaser Light2D。
 
 ## 常见改动落点
 
 | 你想改… | 去哪 |
 |---|---|
-| 详情卡字段 / 布局 | [`src/ui/AgentCard.tsx`](../src/ui/AgentCard.tsx) |
-| 名牌样式 | [`src/ui/NameplateLayer.tsx`](../src/ui/NameplateLayer.tsx) |
+| 像素 HUD 皮肤 / 字体 | [`src/index.css`](../src/index.css)（`Fusion Pixel 12`、`.hud-panel`）；字体文件 [`public/fonts/`](../public/fonts/)；署名 [`public/assets/CREDITS.md`](../public/assets/CREDITS.md) |
+| 详情卡字段 / 布局 | [`src/ui/AgentCard.tsx`](../src/ui/AgentCard.tsx)（像素直角框，与工牌/顶栏同皮肤） |
+| 名牌样式 | [`src/ui/NameplateLayer.tsx`](../src/ui/NameplateLayer.tsx)（常显工牌；选中高亮置顶） |
 | 顶栏文案 / 刷新 | [`src/ui/Toolbar.tsx`](../src/ui/Toolbar.tsx) |
+| 小人脚底阴影 | [`src/game/OfficeScene.ts`](../src/game/OfficeScene.ts)（`shadows` Map；无 Light2D） |
 | 状态文案、皮肤规则、字段映射 | [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) **和** [`src/catalog/mapPersona.ts`](../src/catalog/mapPersona.ts) |
 | 走路、碰撞、相机、切图 | [`src/game/OfficeScene.ts`](../src/game/OfficeScene.ts) + [`mapRegistry.ts`](../src/game/mapRegistry.ts) |
 | 办公室 / 桩图布局 | Tiled 编辑 `public/assets/maps/*.json`；重置主图用 `pnpm import:wa-company` → `pnpm gen:assets` |

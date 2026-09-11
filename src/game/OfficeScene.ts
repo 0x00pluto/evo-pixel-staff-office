@@ -66,6 +66,8 @@ export class OfficeScene extends Phaser.Scene {
   private spawns: Point[] = []
   private workstations: Workstation[] = []
   private sprites = new Map<string, Phaser.GameObjects.Sprite>()
+  /** Soft foot shadow under each agent; destroyed with clearAgents. */
+  private shadows = new Map<string, Phaser.GameObjects.Ellipse>()
   private runtimes = new Map<string, AgentRuntime>()
   private drag = false
   private dragLast = new Phaser.Math.Vector2()
@@ -210,6 +212,8 @@ export class OfficeScene extends Phaser.Scene {
   private clearAgents() {
     for (const s of this.sprites.values()) s.destroy()
     this.sprites.clear()
+    for (const sh of this.shadows.values()) sh.destroy()
+    this.shadows.clear()
     this.runtimes.clear()
   }
 
@@ -530,6 +534,10 @@ export class OfficeScene extends Phaser.Scene {
         this.callbacks.onSelect(persona)
       })
 
+      // Soft elliptical foot shadow (not Light2D); depth just below the sprite.
+      const shadow = this.add.ellipse(spawn.x, spawn.y - 2, 18, 8, 0x000000, 0.35)
+      shadow.setDepth(spawn.y - 1)
+
       const { mode, durationMs } = nextMode()
       this.runtimes.set(persona.id, {
         persona: { ...persona, skin },
@@ -542,6 +550,7 @@ export class OfficeScene extends Phaser.Scene {
         walkFrame: 0,
       })
       this.sprites.set(persona.id, sprite)
+      this.shadows.set(persona.id, shadow)
       sprite.play(`idle-${skin}-0`)
     })
   }
@@ -611,6 +620,11 @@ export class OfficeScene extends Phaser.Scene {
       }
 
       sprite.setDepth(sprite.y)
+      const shadow = this.shadows.get(id)
+      if (shadow) {
+        shadow.setPosition(sprite.x, sprite.y - 2)
+        shadow.setDepth(sprite.y - 1)
+      }
 
       if (now >= this.exitCooldownUntil) {
         const hit = this.exitAt(sprite.x, sprite.y - this.cell * 0.25)

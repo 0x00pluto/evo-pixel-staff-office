@@ -52,6 +52,14 @@ pnpm pack:assets   # → characters.png
 - 页面：[PIPOYA FREE RPG Character Sprites 32x32](https://pipoya.itch.io/pipoya-free-rpg-character-sprites-32x32)
 - 许可：可个人/商业使用与修改；**禁止**再分发或转售素材本体；本仓库仅含组装后的 atlas 切片。
 
+### 缝合像素字体 / Fusion Pixel Font（HUD）
+
+- 字体：Fusion Pixel 12px proportional（简体中文 `zh_hans`）
+- 作者：[TakWolf](https://github.com/TakWolf) / 像素字体工房
+- 来源：[TakWolf/fusion-pixel-font](https://github.com/TakWolf/fusion-pixel-font)（本仓用 release `2026.09.01` 的 otf.woff2）
+- 许可：[SIL Open Font License 1.1](https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL)
+- 本仓库文件：`public/fonts/fusion-pixel-12px-proportional-zh_hans.woff2`（仅入库简体中文一份，供顶栏 / 工牌 / 详情卡 / 素材错误条使用）
+
 ### （历史）办公室 atlas / Pixel Life
 
 早期曾用维护者提供的 office atlas，以及 [Chris Perich / Pixel Life](https://christianperich.itch.io/pixel-life-office-essentials)（CC BY 4.0）试验瓦片。当前运行路径为 Tiled + WA 风瓦片，相关文件已删除。
