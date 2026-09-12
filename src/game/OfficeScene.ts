@@ -1,7 +1,13 @@
 import Phaser from 'phaser'
 import { SKIN_COUNT } from '../catalog/skinCount'
 import type { AgentPersona } from '../catalog/types'
-import { hashPick, nextMode, type AgentRuntime } from './agentFsm'
+import {
+  faceToward,
+  hashPick,
+  initialWorkingMode,
+  nextMode,
+  type AgentRuntime,
+} from './agentFsm'
 import {
   DEFAULT_MAP_ID,
   getMapEntry,
@@ -80,6 +86,8 @@ export class OfficeScene extends Phaser.Scene {
   private cell = CELL
   private spawns: Point[] = []
   private workstations: Workstation[] = []
+  /** One desk per agent id; rebuilt on each spawnAgents. */
+  private deskByAgentId = new Map<string, Workstation>()
   private sprites = new Map<string, Phaser.GameObjects.Sprite>()
   /** Soft foot shadow under each agent; destroyed with clearAgents. */
   private shadows = new Map<string, Phaser.GameObjects.Ellipse>()
@@ -149,7 +157,7 @@ export class OfficeScene extends Phaser.Scene {
       this.callbacks.onNameplates([])
       return
     }
-    this.spawnAgents(this.agents, 'start')
+    this.spawnAgents(this.agents)
   }
 
   reloadAgents(agents: AgentPersona[]) {
@@ -163,7 +171,7 @@ export class OfficeScene extends Phaser.Scene {
       const ok = this.mountMap(nextId, 'start')
       if (!ok) return
     }
-    this.spawnAgents(agents, null)
+    this.spawnAgents(agents)
   }
 
   private setupCameraInput() {
@@ -229,6 +237,7 @@ export class OfficeScene extends Phaser.Scene {
     this.collision = []
     this.spawns = []
     this.workstations = []
+    this.deskByAgentId.clear()
   }
 
   private clearAgents() {
@@ -237,6 +246,7 @@ export class OfficeScene extends Phaser.Scene {
     for (const sh of this.shadows.values()) sh.destroy()
     this.shadows.clear()
     this.runtimes.clear()
+    this.deskByAgentId.clear()
   }
 
   /** Mount tilemap by registry id; returns false on failure (sets page error). */
@@ -450,9 +460,26 @@ export class OfficeScene extends Phaser.Scene {
     this.spawns = this.workstations.map((w) => w.spawn)
   }
 
+  /**
+   * Stable 1:1 desks: agents sorted by id take workstations[0..k-1].
+   * Only overflow (agents > desks) hash-reuses existing desks.
+   */
+  private assignDesks(agents: AgentPersona[]) {
+    this.deskByAgentId.clear()
+    if (!this.workstations.length) return
+    const sorted = [...agents].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    const n = this.workstations.length
+    sorted.forEach((persona, i) => {
+      if (i < n) {
+        this.deskByAgentId.set(persona.id, this.workstations[i])
+      } else {
+        this.deskByAgentId.set(persona.id, hashPick(persona.id, this.workstations))
+      }
+    })
+  }
+
   private workstationFor(id: string): Workstation | null {
-    if (!this.workstations.length) return null
-    return hashPick(id, this.workstations)
+    return this.deskByAgentId.get(id) ?? null
   }
 
   private resolveEntryPoint(
@@ -516,7 +543,8 @@ export class OfficeScene extends Phaser.Scene {
     }
 
     if (getMapKind(exitMap) !== 'world') {
-      this.spawnAgents(this.agents, entryName)
+      // Camera already centered on entry; everyone returns to their own desk.
+      this.spawnAgents(this.agents)
     }
     this.exitCooldownUntil = this.time.now + 1200
     this.switching = false
@@ -545,28 +573,16 @@ export class OfficeScene extends Phaser.Scene {
     }
   }
 
-  private spawnAgents(agents: AgentPersona[], entryName: string | null) {
-    const entryPoint =
-      this.tilemap && entryName
-        ? this.resolveEntryPoint(this.tilemap, entryName)
-        : null
+  private spawnAgents(agents: AgentPersona[]) {
+    this.assignDesks(agents)
 
-    agents.forEach((persona, i) => {
-      let spawn: Point = { x: this.cell * 2, y: this.cell * 2 }
+    agents.forEach((persona) => {
       const desk = this.workstationFor(persona.id)
-      if (entryPoint && i === 0) {
-        spawn = entryPoint
-      } else if (desk) {
-        spawn = desk.spawn
-      } else if (entryPoint) {
-        spawn = {
-          x: entryPoint.x + ((i % 5) - 2) * 8,
-          y: entryPoint.y + Math.floor(i / 5) * 8,
-        }
-      }
+      let spawn: Point = desk?.spawn ?? { x: this.cell * 2, y: this.cell * 2 }
       spawn = this.snapToWalkable(spawn)
 
       const skin = ((persona.skin % SKIN_COUNT) + SKIN_COUNT) % SKIN_COUNT
+      const dir = desk?.computer ? faceToward(desk.spawn, desk.computer) : 0
       const sprite = this.add.sprite(spawn.x, spawn.y, 'characters', skin * 12)
       sprite.setScale(CHAR_SCALE)
       sprite.setOrigin(0.5, 1)
@@ -581,20 +597,20 @@ export class OfficeScene extends Phaser.Scene {
       const shadow = this.add.ellipse(spawn.x, spawn.y, 18, 6, 0x000000, 0.35)
       shadow.setDepth(spawn.y - 1)
 
-      const { mode, durationMs } = nextMode()
+      const { mode, durationMs } = initialWorkingMode()
       this.runtimes.set(persona.id, {
         persona: { ...persona, skin },
         mode,
         modeUntil: this.time.now + durationMs,
         targetX: spawn.x,
         targetY: spawn.y,
-        dir: 0,
+        dir,
         frameTick: 0,
         walkFrame: 0,
       })
       this.sprites.set(persona.id, sprite)
       this.shadows.set(persona.id, shadow)
-      sprite.play(`idle-${skin}-0`)
+      sprite.play(`idle-${skin}-${dir}`)
     })
   }
 
@@ -663,10 +679,27 @@ export class OfficeScene extends Phaser.Scene {
     return p
   }
 
+  /** Tile keys occupied by any computer_* (don't stand on others' desks). */
+  private computerCellKeys(): Set<string> {
+    const keys = new Set<string>()
+    for (const w of this.workstations) {
+      if (!w.computer) continue
+      keys.add(
+        cellKey(
+          Math.floor(w.computer.x / this.cell),
+          Math.floor(w.computer.y / this.cell),
+        ),
+      )
+    }
+    return keys
+  }
+
   private randomWalkTarget(): Point {
+    const blocked = this.computerCellKeys()
     for (let n = 0; n < 40; n++) {
       const tx = 1 + Math.floor(Math.random() * Math.max(1, this.mapW - 2))
       const ty = 1 + Math.floor(Math.random() * Math.max(1, this.mapH - 2))
+      if (blocked.has(cellKey(tx, ty))) continue
       const cand = {
         x: tx * this.cell + this.cell / 2,
         y: ty * this.cell + this.cell / 2,
@@ -687,7 +720,7 @@ export class OfficeScene extends Phaser.Scene {
       if (!sprite) continue
 
       if (now >= rt.modeUntil) {
-        const n = nextMode()
+        const n = nextMode(rt.mode)
         rt.mode = n.mode
         rt.modeUntil = now + n.durationMs
         if (rt.mode === 'wander') {
@@ -696,13 +729,10 @@ export class OfficeScene extends Phaser.Scene {
           rt.targetY = t.y
         } else if (rt.mode === 'working') {
           const desk = this.workstationFor(id)
-          if (desk?.computer) {
-            const work = this.snapToWalkable({
-              x: desk.computer.x,
-              y: desk.computer.y + this.cell * 0.9,
-            })
-            rt.targetX = work.x
-            rt.targetY = work.y
+          if (desk) {
+            const home = this.snapToWalkable(desk.spawn)
+            rt.targetX = home.x
+            rt.targetY = home.y
           } else {
             rt.mode = 'idle'
           }
@@ -715,7 +745,10 @@ export class OfficeScene extends Phaser.Scene {
       ) {
         this.stepToward(sprite, rt, delta)
       } else if (rt.mode === 'working') {
-        rt.dir = 3
+        const desk = this.workstationFor(id)
+        if (desk?.computer) {
+          rt.dir = faceToward(desk.spawn, desk.computer)
+        }
         const anim = `idle-${rt.persona.skin}-${rt.dir}`
         if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
       } else {

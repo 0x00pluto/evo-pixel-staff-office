@@ -22,11 +22,40 @@ export function hashPick<T>(id: string, items: T[]): T {
   return items[(h >>> 0) % items.length]
 }
 
-export function nextMode(): { mode: AgentMode; durationMs: number } {
-  const r = Math.random()
-  if (r < 0.35) return { mode: 'idle', durationMs: 2000 + Math.random() * 3000 }
-  if (r < 0.75) return { mode: 'wander', durationMs: 3000 + Math.random() * 5000 }
-  return { mode: 'working', durationMs: 4000 + Math.random() * 4000 }
+/** Initial at-desk state: working 20–60s. */
+export function initialWorkingMode(): { mode: 'working'; durationMs: number } {
+  return { mode: 'working', durationMs: 20_000 + Math.random() * 40_000 }
+}
+
+/**
+ * Work-default FSM (R0): ~85% stay working (20–60s), ~15% short wander (6–12s).
+ * Wander always returns to working. Idle is not emitted (at-desk idle anim only).
+ */
+export function nextMode(from: AgentMode): { mode: AgentMode; durationMs: number } {
+  if (from === 'wander') {
+    return { mode: 'working', durationMs: 20_000 + Math.random() * 40_000 }
+  }
+  // From working (or legacy idle treated as at-desk): mostly renew working
+  if (Math.random() < 0.15) {
+    return { mode: 'wander', durationMs: 6_000 + Math.random() * 6_000 }
+  }
+  return { mode: 'working', durationMs: 20_000 + Math.random() * 40_000 }
+}
+
+/**
+ * Face computer from spawn. dir: 0 down / 1 left / 2 right / 3 up.
+ * Dominant axis wins; ties prefer vertical.
+ */
+export function faceToward(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): 0 | 1 | 2 | 3 {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx < 0 ? 1 : 2
+  }
+  return dy < 0 ? 3 : 0
 }
 
 /** Approximate tint from hue degrees */

@@ -174,6 +174,45 @@ for (const [id, entry] of Object.entries(registry?.maps || {})) {
     if (id === 'company-25') {
       if (spawns.length < 25) fail(`${id}: need ≥25 spawn_* (got ${spawns.length})`)
       if (computers.length < 25) fail(`${id}: need ≥25 computer_* (got ${computers.length})`)
+
+      const byIndex = new Map()
+      for (const o of objects) {
+        const name = String(o.name || '')
+        let m = name.match(/^spawn_(\d+)$/)
+        if (m) {
+          const slot = byIndex.get(Number(m[1])) || {}
+          slot.spawn = o
+          byIndex.set(Number(m[1]), slot)
+          continue
+        }
+        m = name.match(/^computer_(\d+)$/)
+        if (m) {
+          const slot = byIndex.get(Number(m[1])) || {}
+          slot.computer = o
+          byIndex.set(Number(m[1]), slot)
+        }
+      }
+      const tile = map.tilewidth || 32
+      const maxDist = 2 * tile
+      let paired = 0
+      for (const [n, slot] of [...byIndex.entries()].sort((a, b) => a[0] - b[0])) {
+        if (!slot.spawn || !slot.computer) {
+          fail(
+            `${id}: workstation ${n} incomplete (need both spawn_${n} and computer_${n})`,
+          )
+          continue
+        }
+        paired++
+        const dx = (slot.spawn.x ?? 0) - (slot.computer.x ?? 0)
+        const dy = (slot.spawn.y ?? 0) - (slot.computer.y ?? 0)
+        const dist = Math.hypot(dx, dy)
+        if (dist > maxDist) {
+          fail(
+            `${id}: spawn_${n}↔computer_${n} distance ${dist.toFixed(1)}px > ${maxDist}px (≤2 tiles)`,
+          )
+        }
+      }
+      if (paired < 25) fail(`${id}: need ≥25 complete spawn+computer pairs (got ${paired})`)
     } else if (spawns.length < 1) {
       fail(`${id}: need ≥1 spawn_*`)
     }

@@ -2,8 +2,12 @@
 name: prd-00005-team-at-work
 sequence: 5
 description: 办公室默认在岗：一人一桌、工作为常态、工牌可读 owns；不坐下、不加 CEO、不按 siblings 排座
-status: backlog
+status: partial
 created: 2026-09-11T11:04:27Z
+last_accepted_at: 2026-09-12T13:43:45Z
+accepted_commit: de68d95b9c882662053f7c38597577b1902bb194
+accepted_branch: main
+accepted_scope: R0
 ---
 
 # PRD: 团队在岗
@@ -11,7 +15,7 @@ created: 2026-09-11T11:04:27Z
 
 | 属性   | 值                                                                                                                                 |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 状态   | 工程：backlog                                                                                                                          |
+| 状态   | 工程：partial（见文末「工程验收状态」）                                                                                                                          |
 | 范围   | `company-25` 真工位铺满；工位一对一分配；FSM 改为工作默认；在岗朝向电脑；工牌一行 `owns` 状态。不改花名册 schema、CatalogSource、世界图玩法、HUD 皮肤                                                          |
 | 关联文档 | `README.md`、`docs/dev-guide.md`、`docs/map-editing.md`、`public/assets/CREDITS.md`、`src/game/agentFsm.ts`、`src/game/OfficeScene.ts`、`src/catalog/mapPersona.ts`、`src/ui/NameplateLayer.tsx`、`scripts/gen-pixel-assets.mjs`、`specs/prds/prd-00002-tiled-office-world.md`、`specs/prds/prd-00003-pixel-hud.md`、`specs/prds/prd-00004-world-map.md` |
 
@@ -328,3 +332,61 @@ stateDiagram-v2
 | 日期         | 说明                                                                 |
 | ---------- | ------------------------------------------------------------------ |
 | 2026-09-11 | 初稿：在岗默认 + 一人一桌铺满 company-25 + 工牌 status 行；明确不做坐下/CEO/siblings 排座 |
+| 2026-09-12 | R0 实现合入；维护者人工验收；工牌常显 status 因叠字可读性回退为仅名字；文末工程验收状态回写 `partial`（范围 R0） |
+
+
+## 工程验收状态
+
+> 由 `/team:prd-accept` 维护；勿手工编造「通过」。最后更新：2026-09-12T13:43:45Z，main@de68d95，范围：R0。
+> 外置 Claude S2 按维护者要求跳过；本次以仓库实现 + 维护者人工验收确认结项。
+
+### 总览
+
+- 工程状态：`partial`
+- 验收判定：部分通过（R0；工牌 status 行与 PRD 文案不一致，其余主路径已落地）
+- 最近验收：main@de68d95
+- 摘要：
+  1. FSM 工作默认：`initialWorkingMode` / `nextMode(from)`（约 85% 续在岗 20–60s，15% 短闲逛 6–12s 后回家）
+  2. 工位按 `id` 一对一分配，超额才 `hashPick`；回办公室人回桌、镜头可落入口
+  3. 在岗朝向 `faceToward(spawn→computer)`；wander 避开他人 computer 格
+  4. `gen:assets` 成对 + ≤2 格距离校验；`docs/dev-guide.md` / `map-editing.md` 已同步
+  5. 工牌 UI 仅色点+名字（密桌叠字）；`status` 仍经 `deriveStatus` 进详情卡
+
+### Release 交付
+
+| Release | 状态 | 说明 |
+| --- | --- | --- |
+| R0 | 部分 | 在岗/一人一桌/朝向/回门/校验/文档已落地；工牌常显 status 行未做（可读性取舍） |
+| R1 | 范围外 | 本期未纳入；休息角优先 wander / 弱 idle 呼吸仍属后续 |
+
+### 功能验收清单（Agent 优先读此表）
+
+| ID | 能力摘要 | Release | 状态 | 证据 |
+| --- | --- | --- | --- | --- |
+| R0-1 | company-25 ≥25 成对可视工位；椅格可站约定 | R0 | 通过 | `public/assets/maps/company-25.json`（spawn_0…24 / computer_0…24）；`docs/map-editing.md` |
+| R0-2 | 人数≤桌数一对一；超额才 hash 复用 | R0 | 通过 | `OfficeScene.assignDesks` / `deskByAgentId` |
+| R0-3 | 出生 working；20–60s；低概率 wander 后回家 | R0 | 通过 | `agentFsm.initialWorkingMode` / `nextMode`；`OfficeScene.update` |
+| R0-4 | 在岗朝向由 spawn→computer 决定 | R0 | 通过 | `agentFsm.faceToward`；到达工位后设 `rt.dir` |
+| R0-5 | 工牌常显名字 + 一行截断 status | R0 | 部分 | `NameplateLayer` 仅名字；`deriveStatus`/`AgentCard` 仍有 status；维护者因叠字主动去掉第二行 |
+| R0-6 | 回办公室全体回工位，不把 agent[0] 扔门口 | R0 | 通过 | `spawnAgents` 不再读 entryName 做人坐标；`mountMap` 仍 `centerOn` 入口 |
+| R0-7 | gen:assets 成对 + 距离校验；文档同步 | R0 | 通过 | `scripts/gen-pixel-assets.mjs`；`docs/dev-guide.md` FSM；`docs/map-editing.md` 工位 |
+| R1-1 | wander 优先休息角/咖啡区 | R1 | 范围外 | — |
+| R1-2 | 在岗极弱「还活着」idle 帧切换 | R1 | 范围外 | — |
+
+### 未完成与遗留
+
+- 工牌常显 status 行：与 PRD R0 / 00003 文案冲突；当前为名字单行。若日后要 status，需另做避让或更短展示，不宜直接加回第二行。
+- 外置 S2 未出机器可读 `VERDICT`（维护者跳过人工验收）。
+- R1（休息角 wander、弱 idle）未做。
+- 非目标未做：坐下、CEO、siblings 排座、10/100 分档图、实时任务、世界图员工语义。
+
+### 质量检查
+
+| 检查项 | 状态 |
+| --- | --- |
+| pnpm build | 通过 |
+| pnpm lint | 通过 |
+| 文档与 OpenAPI 同步 | 通过（无 OpenAPI；dev-guide / map-editing / doc_index 已同步） |
+
+---
+统计：通过 6 / 部分 1 / 未实现 0 / 范围外 2

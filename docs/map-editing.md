@@ -172,9 +172,10 @@ Jitsi / clock / website / audio 等 WA 功能层**不导入**。
 3. 插入 **Point** 对象：
    - 员工站位：`spawn_0`、`spawn_1`、…
    - 工作目标（电脑前）：`computer_0`、`computer_1`、…（与 spawn 同号）
-4. `company-25` 校验要求 **≥25 对**；人少时空桌仍在图上；人多则 hash 复用同一对
+4. `company-25` 校验要求 **≥25 组成对**（同一 N 同时有 spawn 与 computer），且 spawn↔computer 欧氏距离 **≤2 格**；禁止空地板孤儿点凑数
+5. 人少时空桌仍在图上；**人数 ≤ 工位数时一对一独占**，仅超额才 hash 复用
 
-座位椅子（如 GID **340**）**不要**标 `collides`，否则站不上 spawn。
+座位椅子（如 GID **340**）**不要**标 `collides`，否则站不上 spawn（`snapToWalkable` 会把人吸到过道）。
 
 ### 4. 标碰撞（人走不过去）
 
@@ -270,7 +271,7 @@ Jitsi / clock / website / audio 等 WA 功能层**不导入**。
 | M | ≤25 | `company-25` | **已落地** |
 | L | ≤100 | `company-100` | 预留 → 回退 `company-25` |
 
-启动时 `selectOfficeMapId(agents.length)` 选办公室图；超过工位数则 hash 复用桌。
+启动时 `selectOfficeMapId(agents.length)` 选办公室图；**人数 ≤ 工位数时一对一独占**，超过工位数才 hash 复用桌。
 
 ### 相关命令
 

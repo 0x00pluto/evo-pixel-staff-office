@@ -220,7 +220,9 @@ pnpm build
 
 ### 小人 FSM
 
-见 [`agentFsm.ts`](../src/game/agentFsm.ts)：`idle` / `wander` / `working` 三种模式随机切换。皮肤索引 `0…SKIN_COUNT-1`（`hash(id) % SKIN_COUNT`，见 [`skinCount.json`](../src/catalog/skinCount.json)，现 **64**），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。动画 key 形如 `walk-{skin}-{dir}` / `idle-{skin}-{dir}`。
+见 [`agentFsm.ts`](../src/game/agentFsm.ts)：**工作是默认**。出生为 `working`（20–60s），到期约 85% 续在岗、约 15% 短闲逛（6–12s）；闲逛结束后必须走回自己的 `spawn`。过道不进入 `idle`（在岗时播站立 `idle-{skin}-{dir}`）。皮肤索引 `0…SKIN_COUNT-1`（`hash(id) % SKIN_COUNT`，见 [`skinCount.json`](../src/catalog/skinCount.json)，现 **64**），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。动画 key 形如 `walk-{skin}-{dir}` / `idle-{skin}-{dir}`。
+
+工位：**人数 ≤ 桌数时按 `id` 排序一对一独占**；仅超额才 `hashPick` 复用。在岗朝向由 `spawn → computer` 主轴决定（禁止写死向上）。从世界图回办公室时**镜头**可落 `office-door`，**人**全体回各自工位。
 
 ### 人物碰撞（脚底 24×24 盒 + 南向 8px）
 

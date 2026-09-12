@@ -20,5 +20,5 @@
 - `specs/prds/prd-00002-tiled-office-world.md`: （历史验收）WA 风 Tiled 多层办公室——**勿当现行工作流**；现行见 `docs/map-editing.md`
 - `specs/prds/prd-00003-pixel-hud.md`: 像素 HUD（工牌常显 + 顶栏/详情卡）与脚底阴影；工程 accepted（R0）
 - `specs/prds/prd-00004-world-map.md`: 用 wa-village 园区替换室外桩图；世界图不显示员工；本地测试导入原图；工程 backlog
-- `specs/prds/prd-00005-team-at-work.md`: 团队在岗——一人一桌、工作默认、工牌 status 行；不做坐下/CEO/siblings 排座；工程 backlog
+- `specs/prds/prd-00005-team-at-work.md`: 团队在岗——一人一桌、工作默认、工牌 status 行；不做坐下/CEO/siblings 排座；工程 partial（R0；工牌 UI 仅名字）
 - `.cursor/commands/team/`: Vibecoding 团队命令（产品 / 验收 / 游戏前端 / 测试 / 自主交付）；母版维护于 Obsidian Vibecoding 库
