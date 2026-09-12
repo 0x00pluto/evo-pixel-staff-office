@@ -17,6 +17,8 @@ const TILE = 32
 const CHAR_SCALE = 1
 const CELL = TILE * CHAR_SCALE
 const SPEED = 55
+/** Align WA DEPTH_OVERLAY_INDEX: layers after floorLayer draw above agents. */
+const DEPTH_OVERLAY = 1_000_000
 /**
  * Foot hitbox. Sprite origin is (0.5, 1) = feet center.
  * Height 24 (taller than WA's 16) so feet stop short of desk overhang from the south;
@@ -282,7 +284,9 @@ export class OfficeScene extends Phaser.Scene {
       return false
     }
 
-    const kind = getMapKind(mapId)
+    // WA z-order: Tiled list order; objectgroup "floorLayer" splits below/above agents.
+    // Phaser map.layers is tilelayers-only — read raw JSON so floorLayer is visible.
+    // Skip evo logic layers (Special Zones / markers) so they never paint.
     const logicLayer = (name: string) =>
       name === 'collisions' ||
       name === 'collision' ||
@@ -294,44 +298,29 @@ export class OfficeScene extends Phaser.Scene {
       name === 'silentOverlay' ||
       name === 'objects'
 
-    if (kind === 'world') {
-      // Village layers: create in Tiled order; skip logic / invisible markers.
-      let depth = 0
-      for (const layerData of map.layers) {
-        const name = layerData.name
-        if (logicLayer(name)) continue
-        if (!map.getLayer(name)) continue
-        const layer = map.createLayer(name, tilesets, 0, 0)
-        if (!layer) continue
-        layer.setDepth(depth++)
-        this.mapLayers.push(layer)
-      }
-    } else {
-      const depthFor = (name: string): number => {
-        if (name === 'floor') return 0
-        if (name === 'walls') return 1
-        if (name === 'furniture') return 2
-        if (name === 'aboveFurniture') return 3
-        if (name.startsWith('abovePlayer') || name.startsWith('above')) return 10_000
-        return 1
-      }
+    type TiledLayerRef = { name?: string; type?: string }
+    const cached = this.cache.tilemap.get(mapId) as
+      | { data?: { layers?: TiledLayerRef[] } }
+      | undefined
+    const tiledLayers = cached?.data?.layers ?? []
 
-      const visibleNames = [
-        'floor',
-        'walls',
-        'furniture',
-        'aboveFurniture',
-        'abovePlayer1',
-        'abovePlayer2',
-        'abovePlayer3',
-      ]
-      for (const name of visibleNames) {
-        if (!map.getLayer(name)) continue
-        const layer = map.createLayer(name, tilesets, 0, 0)
-        if (!layer) continue
-        layer.setDepth(depthFor(name))
-        this.mapLayers.push(layer)
+    let depth = 0
+    for (const layerData of tiledLayers) {
+      const name = layerData.name ?? ''
+      if (
+        layerData.type === 'objectgroup' &&
+        (name === 'floorLayer' || name.endsWith('/floorLayer'))
+      ) {
+        depth = DEPTH_OVERLAY
+        continue
       }
+      if (layerData.type !== 'tilelayer') continue
+      if (logicLayer(name)) continue
+      if (!map.getLayer(name)) continue
+      const layer = map.createLayer(name, tilesets, 0, 0)
+      if (!layer) continue
+      layer.setDepth(depth++)
+      this.mapLayers.push(layer)
     }
 
     this.exitZones = this.parseExitZones(map)

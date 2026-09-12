@@ -35,4 +35,4 @@
 3. 重置世界图：`pnpm import:wa-world`
 4. `pnpm gen:assets` → `pnpm dev:office` → 硬刷新
 
-完整约定见 [`docs/map-editing.md`](../../../docs/map-editing.md)。
+交接说明（心智模型 + 任务菜谱）见 [`docs/map-editing.md`](../../../docs/map-editing.md)。

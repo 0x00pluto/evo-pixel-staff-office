@@ -4,13 +4,13 @@
 
 ## Index
 
-- `AGENTS.md`: 工作区约定、目录语义、能力声明；团队 Cursor 命令见 `.cursor/commands/team/`
+- `AGENTS.md`: 工作区约定、目录语义、能力声明；本仓 MCP 项目名 `Users-peng.zhi-Documents-Object-huyuan-evo-agent-team`（**先 MCP 再 Grep**）；团队 Cursor 命令见 `.cursor/commands/team/`
 - `README.md`: 启动方式、技术栈、操作说明与数据约定；含 Tiled maps / `pack:assets` / `gen:assets` 校验
-- `docs/dev-guide.md`: 新人开发指南——架构、数据流、本地启动、游戏层约定；**对齐 WA 人物做法**（非 24 套数量）、脚底碰撞盒 24×24
-- `docs/map-editing.md`: Tiled 改办公室——**collides**、分档地图、静态工位；**WA 人物做法对照**（帧规格 / 脚底盒；池大小本仓自定）
+- `docs/dev-guide.md`: 新人开发指南——架构、数据流、本地启动、游戏层约定、**代码检索顺序**；**对齐 WA 人物做法**（非 24 套数量）、脚底碰撞盒 24×24
+- `docs/map-editing.md`: 改图交接手册——心智模型（`floorLayer`）、任务菜谱、碰撞 / exit / objects、踩坑清单；附录含命令与 WA 对照
 - `public/assets/CREDITS.md`: WA 风瓦片（CC-BY-SA 3.0）、Pipoya、缝合像素 Fusion Pixel（HUD 字体 OFL）署名；含 world-map 本地测试导入说明
 - `public/fonts/`: Fusion Pixel 12px proportional zh_hans（`src/index.css` `@font-face`）
-- `public/assets/maps/`: `company-25`（≤25）/ `world-map`（园区）；`tilesets/*.png` + **共享 `*.tsj`（collides）** + `tilesets/village/`；见 `docs/map-editing.md`
+- `public/assets/maps/`: `company-25`（≤25）/ `world-map`（园区）；`tilesets/*.png` + **共享 `*.tsj`（collides）** + `tilesets/village/`；交接见 `docs/map-editing.md`
 - `src/game/mapRegistry.ts`: 地图 id 注册（含 `kind: office | world`）+ `selectOfficeMapId` 分档选图
 - `src/catalog/skinCount.json`: 皮肤池大小 `SKIN_COUNT`（现 64，可扩；与 manifest / pack 对齐）
 - `docs/wa-reference.md`: WA 双参考仓查找约定——**首选 Codebase Memory MCP**（`workadventure` / `wa-village`），MCP 不可用或图缺口再降级读本机文件；勿拷 `play/` / 脚本 / scavenger；本地测试可用 `pnpm import:wa-world`

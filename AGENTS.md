@@ -10,7 +10,10 @@
    `python3 ../AgentWikiIndex/scripts/refresh_catalog.py`
    若不存在该目录，**跳过**，不要报错、不要去建。
 4. 团队 Cursor 命令见 [`.cursor/commands/team/`](./.cursor/commands/team/)（产品 / 验收 / 游戏前端 / 测试 / 自主交付）；母版维护于 Obsidian Vibecoding 库，勿在本仓另起一套命令体系。
-5. 对照 WorkAdventure 参考仓时，先读 [`docs/wa-reference.md`](./docs/wa-reference.md)：用 Codebase Memory MCP 项目名 `workadventure` / `wa-village`；MCP 不可用或图缺口再读本机文件（勿拷 `play/` / 整套 village）。
+5. 查代码时 **首选 Codebase Memory MCP**，再降级全文检索：
+   - 本仓：`project="Users-peng.zhi-Documents-Object-huyuan-evo-agent-team"`，用 `search_graph` / `search_code` / `trace_path` / `get_code_snippet`
+   - WA 参考仓：项目名 `workadventure` / `wa-village`，约定见 [`docs/wa-reference.md`](./docs/wa-reference.md)（勿拷 `play/` / 整套 village）
+   - **降级**：MCP 未接入、项目不在列表、查询失败、或目标落在图覆盖缺口（PNG / 字体 / 大地图瓦片等）时，再用 `Grep` / `Read`（大地图用 Tiled）
 
 ## 目录约定
 

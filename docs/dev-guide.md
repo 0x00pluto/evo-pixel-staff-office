@@ -10,9 +10,20 @@
 | [`README.md`](../README.md) | 30 秒启动、素材准备、操作说明 |
 | [`docs/doc_index.md`](./doc_index.md) | 技术文档地图 |
 | [`docs/wa-reference.md`](./wa-reference.md) | WA 双参考仓：MCP `workadventure` / `wa-village`，文件降级 |
-| [`docs/map-editing.md`](./map-editing.md) | Tiled 改办公室地图：图层、碰撞、出门、预览回流 |
+| [`docs/map-editing.md`](./map-editing.md) | 改图交接手册：floorLayer 心智模型、任务菜谱、碰撞 / 出门 |
 | [`specs/prds/`](../specs/prds/) | 产品规格（PRD） |
 | [`.cursor/commands/team/`](../.cursor/commands/team/) | Cursor 团队命令（产品 / 验收 / 游戏前端 / 测试 / 自主交付） |
+
+## 代码检索顺序
+
+查本仓或对照参考仓时，**先用 Codebase Memory MCP，再降级全文检索**（与 [`AGENTS.md`](../AGENTS.md) 一致）：
+
+1. **首选 MCP**
+   - 本仓：`project="Users-peng.zhi-Documents-Object-huyuan-evo-agent-team"`（`search_graph` / `search_code` / `trace_path` / `get_code_snippet`）
+   - WA 参考仓：`workadventure` / `wa-village`，细节见 [`docs/wa-reference.md`](./wa-reference.md)
+2. **降级 `Grep` / `Read`**：MCP 未接入、项目不在列表、查询失败、或目标落在图覆盖缺口时再用（大地图用 Tiled）
+
+本仓图覆盖缺口（即使 MCP 可用也直接读文件）：二进制素材、`public/assets/**/*.png`、字体等。本仓同样 MCP 优先。
 
 ## 做什么 / 不做什么
 
@@ -193,15 +204,19 @@ pnpm build
 
 ### 地图图层
 
+心智模型与操作菜谱见 [`map-editing.md`](./map-editing.md)（`floorLayer` 切点、谁盖谁）。
+
 | 层 | 用途 |
 |---|---|
-| `floor` / `walls` / `furniture` / `above*` | 办公室可见分层；`abovePlayer*` 深度高于角色 |
-| `GroundWorld` / `AboveWorld*` / `roof*` 等 | 世界图可见分层（按 Tiled 顺序） |
+| `floor` / `walls` / `furniture` / `aboveFurniture` | 办公室可见分层；均在 `floorLayer` 之下（角色可盖住） |
+| `floorLayer` | WA objectgroup；**z-order 切点**（其上 → overlay depth） |
+| `abovePlayer*` | 须在 Tiled 列表里位于 `floorLayer` 之上才会盖住角色 |
+| `GroundWorld` / `AboveWorld*` / `roof*` 等 | 世界图可见分层（按 Tiled 顺序；无 floorLayer 时无 overlay 切点） |
 | `collisions` | 碰撞（不可见）；`index > 0` 不可走 |
 | `start` | 默认出生 |
 | `office-door` / `from-office` 等 | `startLayer=true` 命名入口 |
 | `exit` | 属性 `exitMap` + `entryName`；踩格或点击切图 |
-| `objects` | `spawn_*` / `computer_*`（仅办公室） |
+| `objects` | `spawn_*` / `computer_*` 坐标（仅办公室）；不参与绘制 |
 
 ### 小人 FSM
 
@@ -222,7 +237,7 @@ pnpm build
 
 ### 参考项目 WorkAdventure（本机）
 
-查 WA **先用 Codebase Memory MCP**（`workadventure` 引擎仓 / `wa-village` 大图与 tilesets），MCP 不可用或图缺口再读本机文件；双仓约定见 [`docs/wa-reference.md`](./wa-reference.md)。
+查 WA **先用 Codebase Memory MCP**（`workadventure` 引擎仓 / `wa-village` 大图与 tilesets），MCP 不可用或图缺口再读本机文件；双仓约定见 [`docs/wa-reference.md`](./wa-reference.md)。**本仓同样 MCP 优先**（见上文「代码检索顺序」）。
 
 | 项 | 值 |
 |---|---|

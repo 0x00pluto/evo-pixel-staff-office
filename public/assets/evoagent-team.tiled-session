@@ -222,6 +222,10 @@
     ],
     "project": "evoagent-team.tiled-project",
     "recentFiles": [
+        "maps/tilesets/tileset1.tsj",
+        "maps/tilesets/tileset1-repositioning.tsj",
+        "maps/tilesets/tileset5_export.tsj",
+        "maps/tilesets/tileset6_export.tsj",
         "maps/company-25.json",
         "maps/tilesets/village/fire.tsj",
         "maps/tilesets/village/flags.tsj",
@@ -229,10 +233,6 @@
         "maps/tilesets/village/GroundWorld.tsj",
         "maps/tilesets/village/grounds-assets.tsj",
         "maps/tilesets/village/learning-lab.tsj",
-        "maps/tilesets/village/meeting-rooms.tsj",
-        "maps/tilesets/village/office-building.tsj",
-        "maps/tilesets/village/overlay-village.tsj",
-        "maps/tilesets/village/signup-WA.tsj",
-        "maps/tilesets/village/tables.tsj"
+        "maps/tilesets/village/meeting-rooms.tsj"
     ]
 }
