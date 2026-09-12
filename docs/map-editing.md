@@ -69,9 +69,10 @@ flowchart TB
 | [`public/assets/maps/company-25.json`](../public/assets/maps/company-25.json) | **主图（≤25 人）** |
 | [`public/assets/maps/world-map.json`](../public/assets/maps/world-map.json) | **世界园区图**（出门往返；`kind: world`） |
 | [`public/assets/maps/registry.json`](../public/assets/maps/registry.json) | map id → JSON + `kind`；exit 只引用 id |
-| [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | 办公室瓦片；地板在 **tileset1.png**；碰撞标在 `*.tsj` |
+| [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | 办公室瓦片；地板在 **tileset1.png**；碰撞标在 `*.tsj`；生成的 `art/tilesets/<pack>` 图集 |
 | [`public/assets/maps/tilesets/village/`](../public/assets/maps/tilesets/village/) | 园区瓦片（`pnpm import:wa-world`） |
-| [`public/assets/maps/maps.tiled-project`](../public/assets/maps/maps.tiled-project) | 可选：Tiled 工程入口 |
+| [`art/maps/maps.tiled-project`](../art/maps/maps.tiled-project) | **Tiled 工程入口**（唯一；会话在 `art/maps/`，不进 npx） |
+| [`art/tilesets/`](../art/tilesets/) | 自制动画条带：一类一目录 + manifest（`pnpm pack:art-tilesets`） |
 | [`public/assets/maps/README.md`](../public/assets/maps/README.md) | 工作区一页纸 |
 | [`public/assets/CREDITS.md`](../public/assets/CREDITS.md) | 瓦片许可与署名 |
 
@@ -93,9 +94,9 @@ flowchart TB
 
 ```bash
 pnpm unpack:tilesets          # Tiled 只显示一份外部 .tsj，避免「一对一对」
-# Tiled: File → Open → public/assets/maps/company-25.json（或 maps.tiled-project）
+# Tiled: File → Open → art/maps/maps.tiled-project（或直接打开 public/assets/maps/company-25.json）
 # 改图 → File → Save（JSON）
-pnpm gen:assets               # pack + 校验
+pnpm gen:assets               # pack art/tilesets/* + tilesets + sync 预加载 + 校验
 pnpm dev:office               # 浏览器硬刷新
 # git 提交改过的 .json / .png / .tsj
 ```
@@ -176,6 +177,10 @@ Jitsi / clock / website / audio 等 WA 功能层**不导入**。
 5. 人少时空桌仍在图上；**人数 ≤ 工位数时一对一独占**，仅超额才 hash 复用
 
 座位椅子（如 GID **340**）**不要**标 `collides`，否则站不上 spawn（`snapToWalkable` 会把人吸到过道）。
+
+### 3.1 摆闲逛 POI（休息 / 咖啡 / 会议）
+
+闲逛目的地用 `poi_<kind>_<n>` Point，约定见 **[`docs/map-poi.md`](./map-poi.md)**（命名、可走格、Tiled 步骤、运行时语义）。与工位对象同层 `objects`，勿与 `spawn_*` / `computer_*` 混用同一数字语义。
 
 ### 4. 标碰撞（人走不过去）
 
@@ -276,7 +281,10 @@ Jitsi / clock / website / audio 等 WA 功能层**不导入**。
 ### 相关命令
 
 ```bash
-pnpm gen:assets           # 先 pack:tilesets，再校验 maps
+pnpm gen:assets           # pack art + tilesets + sync 预加载列表 + 校验 maps
+pnpm pack:art-tilesets    # art/tilesets/<pack> → public/.../<pack>.png + .tsj
+pnpm pack:office-anim     # 同 pack:art-tilesets（别名）
+pnpm sync:tileset-assets  # 从地图 tilesets[] 同步 registry + tilesetAssets.generated.ts
 pnpm unpack:tilesets      # 地图改回 source → .tsj（Tiled 改图前）
 pnpm pack:tilesets        # 把 tilesets/*.tsj 的 collides 灌进各地图 JSON
 pnpm annotate:collides    # 批量补 .tsj 的 collides，再 pack
@@ -288,6 +296,33 @@ pnpm dev:office           # 本地预览（推荐）
 pnpm dev                  # 本地预览（需自备 EVO_AGENT_CATALOG）
 ```
 
+### 作者工作区 `art/` vs 运行时 `public/`
+
+| | `art/` | `public/` |
+|--|--------|-----------|
+| 谁用 | 人、Tiled 工程、Piskel、打包脚本 | 浏览器、Phaser、`pixel-office` / npx |
+| 例子 | `maps/` 工程、`tilesets/<pack>/` 条带 | 地图 JSON、tileset PNG、打好的 `<pack>.png` |
+| 进 `dist` | **否** | **是**（Vite 整份拷贝） |
+
+```
+art/
+  maps/maps.tiled-project     # 只开这一份工程
+  tilesets/office-anim/       # 动画类 → office-anim.png（已有 plant-pot）
+  tilesets/couches/           # 沙发 couches → couches.png（静态家具示例）
+  tilesets/couches-2/         # 过大人工拆第二包
+```
+
+- **Tiled 工程**：只打开 [`art/maps/maps.tiled-project`](../art/maps/maps.tiled-project)。不要把 `*.tiled-project` / `*.tiled-session` 放进 `public/`。
+- **地图 JSON** 仍在 `public/assets/maps/`（源 = 运行时）；工程 `folders` 指向该目录。
+- **自制条带**：放 [`art/tilesets/<pack>/src/`](../art/tilesets/)（RGBA，宽高为 32 倍数；横=占格，竖=帧）→ `pnpm pack:art-tilesets` → `public/assets/maps/tilesets/<pack>.{png,tsj}`。目录名即 tileset 名。
+- **紧贴 + 第 0 帧钉死**：新图紧贴占位。加帧优先脚下；空不够则**只溢出新帧**到别处（地图铺的第 0 帧 GID 不变）。整块搬家不做。
+- **终身占格**：条目占用过的格子不回收（缩帧/删源留洞）；别人不能占用。打满请建 `<pack>-2/`。
+- **加宽**：不要改原 PNG 宽度；新文件 append，地图改铺。
+- **顺序锁定**：`manifest.entries` 只追加；`columns` 锁定；`maxAtlasHeightPx` / 图宽硬顶 **2048**（手机侧），超限不自动拆 sheet。
+- **动画在 Tiled 绑**：脚本**不**自动写 playlist。`pack:art-tilesets` 更新图集几何时**合并保留**已有 `.tsj` 的 `tiles[]`（animation / properties）；新条带需在 Tile Animation Editor 自行添加。
+- **进地图**：Tiled Add External 并铺瓦片后跑 `pnpm gen:assets`（内含 `sync:tileset-assets`）——从地图 `tilesets[]` **自动登记**预加载列表，无需手改 `mapRegistry`。未铺进任何地图的空包不会进列表。
+- **下期**（本期不搬）：`public/assets/maps/reference/`、未挂运行时的 `tilesets/skins/` 宜迁到 `art/`。
+
 ### 许可提醒
 
 当前瓦片多为 **CC-BY-SA 3.0**（衍生地图同样 share-alike）。署名见 [`CREDITS.md`](../public/assets/CREDITS.md)。不要把 tileset 当独立素材包再分发。
@@ -296,7 +331,7 @@ pnpm dev                  # 本地预览（需自备 EVO_AGENT_CATALOG）
 
 WA Inline Map Editor 依赖登录 / admin / `.wam`，且不擅长从零铺地板墙。本仓是 Phaser 本地大屏，直接吃 Tiled JSON。
 
-**标准路径 = Tiled 桌面编辑 → 提交 `public/assets/maps/`。**
+**标准路径 = Tiled 打开 `art/maps/maps.tiled-project` → 编辑并提交 `public/assets/maps/`。**
 
 ### 参考路径速查（工程师）
 

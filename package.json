@@ -12,9 +12,14 @@
     "dev:office": "EVO_AGENT_CATALOG=\"${EVO_AGENT_CATALOG:-$HOME/Documents/Codex/AgentWikiIndex/CATALOG.json}\" vite --force",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview",
     "pixel-office": "node ./bin/pixel-office.mjs",
-    "gen:assets": "node ./scripts/pack-external-tilesets.mjs && node ./scripts/gen-pixel-assets.mjs",
+    "gen:assets": "node ./scripts/pack-art-tilesets.mjs && node ./scripts/pack-external-tilesets.mjs && node ./scripts/sync-tileset-assets-from-maps.mjs && node ./scripts/gen-pixel-assets.mjs",
+    "pack:art-tilesets": "node ./scripts/pack-art-tilesets.mjs",
+    "pack:office-anim": "node ./scripts/pack-art-tilesets.mjs",
+    "sync:tileset-assets": "node ./scripts/sync-tileset-assets-from-maps.mjs",
     "sync:map-palette": "node ./scripts/sync-map-palette.mjs",
     "import:wa-company": "node ./scripts/import-wa-starter-company.mjs",
     "import:wa-world": "node ./scripts/import-wa-village-world.mjs",
@@ -38,6 +43,7 @@
     "oxlint": "^1.79.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
   }
 }

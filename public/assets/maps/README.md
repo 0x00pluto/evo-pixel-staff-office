@@ -7,8 +7,11 @@
 | `registry.json` | map id 注册（含 `kind`） |
 | `tilesets/*.png` | 办公室瓦片图（地板在 **tileset1.png**） |
 | `tilesets/*.tsj` | **共享 tileset + collides（办公室；打标只改这里）** |
+| `tilesets/office-anim.*` 等 | 自制动画图集（`pnpm pack:art-tilesets` ← `art/tilesets/<pack>/`） |
 | `tilesets/village/*.png` + `*.tsj` | 园区瓦片与共享 tileset（`pnpm import:wa-world` 一并写出） |
-| `reference/` | WA 对照（不进游戏） |
+| `reference/` | WA 对照（不进游戏；下期宜迁 `art/`） |
+
+**Tiled 工程入口**在 [`art/maps/maps.tiled-project`](../../../art/maps/maps.tiled-project)，不要放在本目录。
 
 ## 碰撞（共享 .tsj）
 
@@ -30,9 +33,10 @@
 
 ## 最短路径
 
-1. 改办公室：Tiled → `company-25.json`
+1. Tiled → Open `art/maps/maps.tiled-project`（或直接 `company-25.json`）
 2. 改碰撞：Tiled → `tilesets/*.tsj`
-3. 重置世界图：`pnpm import:wa-world`
-4. `pnpm gen:assets` → `pnpm dev:office` → 硬刷新
+3. 自制条带：丢进 `art/tilesets/<pack>/src/` → `pnpm pack:art-tilesets`（第 0 帧钉死、加帧可溢出；详见 `art/README.md`）
+4. 重置世界图：`pnpm import:wa-world`
+5. `pnpm gen:assets` → `pnpm dev:office` → 硬刷新
 
 交接说明（心智模型 + 任务菜谱）见 [`docs/map-editing.md`](../../../docs/map-editing.md)。

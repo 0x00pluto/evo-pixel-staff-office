@@ -1,0 +1,36 @@
+{
+  "tileSize": 32,
+  "columns": 16,
+  "defaultDurationMs": 250,
+  "maxAtlasHeightPx": 2048,
+  "entries": [
+    {
+      "id": "plant-pot",
+      "file": "plant-pot.png",
+      "cols": 3,
+      "frames": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 0,
+          "y": 1
+        }
+      ],
+      "owned": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 0,
+          "y": 1
+        }
+      ],
+      "x": 0,
+      "y": 0,
+      "rows": 2
+    }
+  ]
+}

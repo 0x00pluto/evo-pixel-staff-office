@@ -49,10 +49,11 @@
 | 花名册 API | Node ESM；开发态 Vite 插件，预览态 `pixel-office` |
 | 包管理 | **pnpm**（`packageManager: pnpm@10.26.2`） |
 | Lint | `oxlint`（`pnpm lint`） |
+| 单测 | Vitest（`pnpm test`；用例与源码同目录 `*.test.ts`） |
 
 环境建议：Node 20 LTS 或 22+。花名册来自环境变量 `EVO_AGENT_CATALOG`，或同级 `../AgentWikiIndex/CATALOG.json`，或当前目录 `CATALOG.json`。
 
-目前仓库**没有**自动化测试目录（无 `*.test.*`）；质量门禁以 `pnpm lint` + `pnpm build` 为主。
+质量门禁：`pnpm lint` + `pnpm test` + `pnpm build`。单测覆盖纯逻辑（花名册映射双份、选图、小人 FSM）；不测 Phaser 画布与 React HUD。
 
 ## 仓库地图
 
@@ -61,7 +62,7 @@
 | 路径 | 职责 |
 |---|---|
 | [`src/App.tsx`](../src/App.tsx) | 拉取 `/api/catalog`、挂载 Phaser、HUD 状态 |
-| [`src/catalog/`](../src/catalog/) | `AgentPersona` 类型与 TS 侧映射（[`mapPersona.ts`](../src/catalog/mapPersona.ts)） |
+| [`src/catalog/`](../src/catalog/) | `AgentPersona` 类型与 TS 侧映射（[`mapPersona.ts`](../src/catalog/mapPersona.ts)）；同目录 `*.test.ts` |
 | [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) | **运行时真正读 JSON 的地方**（Vite 插件与 CLI 共用） |
 | [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) | 开发态 `GET /api/catalog` |
 | [`src/cli/run.mjs`](../src/cli/run.mjs) / [`static.mjs`](../src/cli/static.mjs) | 预览态静态托管 + 同路径 API |
@@ -220,9 +221,9 @@ pnpm build
 
 ### 小人 FSM
 
-见 [`agentFsm.ts`](../src/game/agentFsm.ts)：**工作是默认**。出生为 `working`（20–60s），到期约 85% 续在岗、约 15% 短闲逛（6–12s）；闲逛结束后必须走回自己的 `spawn`。过道不进入 `idle`（在岗时播站立 `idle-{skin}-{dir}`）。皮肤索引 `0…SKIN_COUNT-1`（`hash(id) % SKIN_COUNT`，见 [`skinCount.json`](../src/catalog/skinCount.json)，现 **64**），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。动画 key 形如 `walk-{skin}-{dir}` / `idle-{skin}-{dir}`。
+见 [`agentFsm.ts`](../src/game/agentFsm.ts)：**工作是默认**。出生为 `working`，剩余时长约 **1–45s 打散**（模拟已上了一会儿班），到期约 85% 续在岗（20–60s）、约 15% 外出。外出分两类（arity × place，见 [`map-poi.md`](./map-poi.md)）：**个人差事**（solo：工位时钟 → lounge/coffee/random，软占椅）与 **集体开会**（group：场景冷却拉 2–3 人分坐不同 `poi_meeting_*`；先到站等、**全员到齐后**共享 dwell 并同时散会；meeting **禁止**单人 desk wander）。solo 相位为 **走到 POI → dwell → 回家**（旅行中不因短时钟闪回）。过道不进入 `idle`。在岗时用单帧 `idle-{skin}-{dir}`，并做**假·活着**微动（偶发瞥视换朝向，或闪一下 walk 中间帧）；每人 `fidgetUntil` 独立，避免全员齐动。走路用碰撞格上的 **8 向 BFS** 折线航点绕桌椅（对角防穿角；动画仍四向 Pipoya；不必 A*）；撞墙不再取消目标。皮肤索引 `0…SKIN_COUNT-1`（`hash(id) % SKIN_COUNT`，见 [`skinCount.json`](../src/catalog/skinCount.json)，现 **64**），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。
 
-工位：**人数 ≤ 桌数时按 `id` 排序一对一独占**；仅超额才 `hashPick` 复用。在岗朝向由 `spawn → computer` 主轴决定（禁止写死向上）。从世界图回办公室时**镜头**可落 `office-door`，**人**全体回各自工位。
+工位：**人数 ≤ 桌数时按 `id` 排序一对一独占**；仅超额才 `hashPick` 复用。在岗稳定朝向 `faceDir` 由 `spawn → computer` 主轴决定（禁止写死向上；微动结束再对齐）。从世界图回办公室时**镜头**可落 `office-door`，**人**全体回各自工位。
 
 ### 人物碰撞（脚底 24×24 盒 + 南向 8px）
 
@@ -290,7 +291,7 @@ pnpm build
 1. **目录**：不新增平级顶层目录；产物进 `cache/` / `temp/` / `output/`，不入库。
 2. **能力声明**：改 `AGENTS.md` 的 owns/not 后，若同级存在 `../AgentWikiIndex/`，执行 `python3 ../AgentWikiIndex/scripts/refresh_catalog.py`；**没有该目录则跳过**，不要报错、不要去建。
 3. **不要提交**：`temp/` 里的 itch 原包、`.env`、`dist/`、`node_modules/`。
-4. **映射双份**：`catalog.mjs`（运行时）与 `mapPersona.ts`（类型/前端）必须保持一致。
+4. **映射双份**：`catalog.mjs`（运行时）与 `mapPersona.ts`（类型/前端）必须保持一致；改映射后跑 `pnpm test`，有一条用例对两边输出做相等断言。
 5. **素材缺失**：办公室空白或顶部报错时，先确认 `maps/*.json` / `maps/tilesets/*.png` / `characters.png` 齐全。
 6. **静态托管**：[`src/cli/static.mjs`](../src/cli/static.mjs) 有路径穿越防护（禁止读出 `dist/` 根外），改静态服务时不要拆掉。
 7. **团队命令**：母版维护于 Obsidian Vibecoding 库；本仓 `.cursor/commands/team/` 只作安装稿，勿另起一套命令体系。
@@ -303,10 +304,13 @@ pnpm build
 | `pnpm dev` | Vite 开发服务器 |
 | `pnpm build` | `tsc -b` + Vite 生产构建 |
 | `pnpm lint` | oxlint |
+| `pnpm test` | Vitest 单测（一次跑完） |
+| `pnpm test:watch` | Vitest 监听模式 |
 | `pnpm preview` | Vite 预览（不含花名册 API；日常用 `pixel-office`） |
 | `pnpm pixel-office` | 构建产物 + `/api/catalog` 一键预览 |
 | `pnpm pack:assets` | （维护者偶发）本机 vendor → 覆盖 `characters.png`；日常开发不需要 |
-| `pnpm gen:assets` | pack `tilesets/*.tsj` 后校验 Tiled 地图（不写 PNG） |
+| `pnpm gen:assets` | pack art + tilesets + **sync 预加载列表** + 校验 Tiled 地图（不写 PNG） |
+| `pnpm sync:tileset-assets` | 仅从地图 `tilesets[]` 同步 `registry.json` / `tilesetAssets.generated.ts` |
 | `pnpm pack:tilesets` | 把共享 `.tsj` 的 collides 灌进地图 JSON |
 | `pnpm annotate:collides` | 批量补 `.tsj` collides 再 pack |
 | `pnpm import:wa-company` | 用 WA starter 重置 `company-25.json` |

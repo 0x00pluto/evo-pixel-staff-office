@@ -5,7 +5,7 @@
 ## 开始工作前
 
 1. 先读 [`README.md`](./README.md) 了解启动方式与目录；文档地图见 [`docs/doc_index.md`](./docs/doc_index.md)。
-2. 改动落进既有目录语义（见下表），不新增平级顶层目录。
+2. 改动落进既有目录语义（见下表）。除表内已列目录外，不新增平级顶层目录。
 3. 若同级存在 [`../AgentWikiIndex/`](../AgentWikiIndex/)，改完「能力声明」后执行：
    `python3 ../AgentWikiIndex/scripts/refresh_catalog.py`
    若不存在该目录，**跳过**，不要报错、不要去建。
@@ -22,14 +22,16 @@
 | `src/` | 前端、游戏、CLI、花名册映射 | 是 |
 | `bin/` | `pixel-office` CLI 入口 | 是 |
 | `scripts/` | 素材生成等脚本入口 | 是 |
-| `public/` | 静态资源与像素素材 | 是 |
+| `art/` | **作者工作区**：`maps/`（Tiled 工程）、`tilesets/<pack>/`（Piskel 条带 + manifest）；不进 `dist` / npx | 是 |
+| `public/` | **运行时静态资源**：地图 JSON、tileset PNG、打好的图集；Vite 整份拷进 `dist` | 是 |
 | `docs/` | 技术文档 | 是 |
 | `specs/` | 产品规格（PRD 等） | 是 |
 | `cache/` | 可重建缓存 | 否 |
 | `temp/` | 中间产物 | 否 |
 | `output/` | 最终产物归档 | 否 |
 
-约束：`cache/`、`temp/`、`output/`、`node_modules/`、`dist/` 全部 gitignore。
+约束：`cache/`、`temp/`、`output/`、`node_modules/`、`dist/` 全部 gitignore。  
+**不要**把 Tiled 会话（`*.tiled-session`）、Piskel 碎片、对照包堆进 `public/`——它们会进 npx 包。地图 JSON / 用到的瓦片 PNG 是「源 = 运行时」，仍留在 `public/assets/maps/`。
 
 ## 环境
 
@@ -37,6 +39,7 @@ Node 用 **pnpm** 管理：`pnpm install` / `pnpm <script>`（安装命令只给
 
 ```bash
 EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json pnpm dev
+pnpm test
 pnpm build
 pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 ```

@@ -5,9 +5,7 @@
   "extensions": [
   ],
   "folders": [
-    ".",
-    "tilesets",
-    "reference"
+    "../../public/assets/maps"
   ],
   "propertyTypes": [
   ]

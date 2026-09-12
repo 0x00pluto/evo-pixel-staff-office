@@ -72,9 +72,11 @@ assets/**/*.mp3
 # Cursor
 .cursor/
 
-# Tiled Map Editor（本地会话 / 临时，勿入库；保留 *.tiled-project）
+# Tiled Map Editor（本地会话 / 临时，勿入库；工程文件放 art/，勿放 public/）
 *.tiled-session
 *.tiled-session.bak
+public/**/*.tiled-project
+public/**/*.tiled-session
 *.tmx~
 *.tsx~
 *.json~

@@ -7,3 +7,4 @@
 | 00003 | `specs/prds/prd-00003-pixel-hud.md` | 像素 HUD（工牌常显 + 顶栏/详情卡同皮肤）与小人脚底阴影；不做悬停气泡与 Light2D；工程 accepted（R0） |
 | 00004 | `specs/prds/prd-00004-world-map.md` | 用 wa-village 总部园区替换室外桩图；世界地图不显示员工；本地测试导入原图；工程 backlog |
 | 00005 | `specs/prds/prd-00005-team-at-work.md` | 办公室默认在岗：一人一桌、工作为常态、工牌可读 owns；不坐下、不加 CEO、不按 siblings 排座；工程 partial |
+| 00006 | `specs/prds/prd-00006-meaningful-wander-events.md` | 有意义闲逛：个人差事（lounge/coffee 软占）与集体开会（2–3 人分椅、全员到齐散会）；arity×place；工程 accepted（R0） |

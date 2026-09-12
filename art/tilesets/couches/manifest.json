@@ -1,0 +1,7 @@
+{
+  "tileSize": 32,
+  "columns": 16,
+  "defaultDurationMs": 250,
+  "maxAtlasHeightPx": 2048,
+  "entries": []
+}

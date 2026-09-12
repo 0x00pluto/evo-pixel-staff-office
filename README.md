@@ -6,6 +6,7 @@
 
 - Vite + React + TypeScript + Tailwind CSS
 - Phaser 4（Tiled 多层办公室 / 小人 FSM）
+- Vitest 单测（花名册映射 / 选图 / FSM；`pnpm test`）
 - 本地 Node CLI（读花名册 + 静态托管）
 - 包管理：**pnpm**
 
@@ -62,6 +63,14 @@ EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json pnpm dev
 ```
 
 浏览器打开终端提示的本地地址（默认 `http://localhost:5173`），**请硬刷新**（Cmd+Shift+R）。
+
+## 测试
+
+纯逻辑单测与源码放在一起（`src/**/*.test.ts`），不测 Phaser 画布：
+
+```bash
+pnpm test
+```
 
 ## 一键预览（构建后）
 

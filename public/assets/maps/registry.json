@@ -42,6 +42,21 @@
       "url": "/assets/maps/tilesets/Special_Zones.png"
     },
     {
+      "name": "fountain-sculptures",
+      "key": "ts_village_fountain-sculptures",
+      "url": "/assets/maps/tilesets/village/fountain-sculptures.png"
+    },
+    {
+      "name": "decor-rugs-1",
+      "key": "ts_village_decor-rugs-1",
+      "url": "/assets/maps/tilesets/village/decor-rugs-1.png"
+    },
+    {
+      "name": "office-anim",
+      "key": "ts_office-anim",
+      "url": "/assets/maps/tilesets/office-anim.png"
+    },
+    {
       "name": "learning-lab",
       "key": "ts_village_learning-lab",
       "url": "/assets/maps/tilesets/village/learning-lab.png"
@@ -50,11 +65,6 @@
       "name": "meeting-rooms",
       "key": "ts_village_meeting-rooms",
       "url": "/assets/maps/tilesets/village/meeting-rooms.png"
-    },
-    {
-      "name": "fountain-sculptures",
-      "key": "ts_village_fountain-sculptures",
-      "url": "/assets/maps/tilesets/village/fountain-sculptures.png"
     },
     {
       "name": "WA_Special_Zones",
@@ -180,11 +190,6 @@
       "name": "couches",
       "key": "ts_village_couches",
       "url": "/assets/maps/tilesets/village/couches.png"
-    },
-    {
-      "name": "decor-rugs-1",
-      "key": "ts_village_decor-rugs-1",
-      "url": "/assets/maps/tilesets/village/decor-rugs-1.png"
     },
     {
       "name": "puffs",

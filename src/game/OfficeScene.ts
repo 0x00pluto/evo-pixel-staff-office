@@ -2,11 +2,22 @@ import Phaser from 'phaser'
 import { SKIN_COUNT } from '../catalog/skinCount'
 import type { AgentPersona } from '../catalog/types'
 import {
+  dwellMs,
   faceToward,
+  glanceDir,
   hashPick,
   initialWorkingMode,
-  nextMode,
+  meetingCooldownMs,
+  meetingSize,
+  nextDeskMode,
+  pickSoloPoi,
+  rescheduleFidgetMs,
+  scheduleFidgetMs,
+  travelTimeoutMs,
+  workingDurationMs,
   type AgentRuntime,
+  type PoiKind,
+  type WanderTargetKind,
 } from './agentFsm'
 import {
   DEFAULT_MAP_ID,
@@ -39,6 +50,19 @@ const BODY_SOUTH = 8
 const NAMEPLATE_GAP = 12
 
 type Point = { x: number; y: number }
+/** Map POI with Tiled object name as soft-claim key (e.g. poi_meeting_0). */
+type MapPoi = { key: string; point: Point; kind: PoiKind }
+
+type WanderDest = { point: Point; kind: WanderTargetKind; claimKey: string | null }
+
+const POI_KINDS: PoiKind[] = ['lounge', 'coffee', 'meeting']
+
+/** `poi_lounge_0` → lounge; unknown kind ignored. */
+function parsePoiKind(name: string): PoiKind | null {
+  if (!name.startsWith('poi_')) return null
+  const kind = name.slice(4).split('_')[0]
+  return (POI_KINDS as string[]).includes(kind) ? (kind as PoiKind) : null
+}
 
 /** One desk: same N in spawn_N + computer_N. */
 type Workstation = {
@@ -86,6 +110,8 @@ export class OfficeScene extends Phaser.Scene {
   private cell = CELL
   private spawns: Point[] = []
   private workstations: Workstation[] = []
+  /** Wander destinations from poi_* objects (lounge/coffee/meeting). */
+  private pois: MapPoi[] = []
   /** One desk per agent id; rebuilt on each spawnAgents. */
   private deskByAgentId = new Map<string, Workstation>()
   private sprites = new Map<string, Phaser.GameObjects.Sprite>()
@@ -101,6 +127,14 @@ export class OfficeScene extends Phaser.Scene {
   private mapLayers: Array<{ destroy: () => void; setDepth: (d: number) => unknown }> = []
   private exitZones: ExitZone[] = []
   private exitCooldownUntil = 0
+  /** Next time a scene-level meeting event may fire (0 = ASAP after load). */
+  private meetingCooldownUntil = 0
+  /** Active meeting: recruited agent ids (shrinks on travel timeout / leave). */
+  private meetingMemberIds = new Set<string>()
+  /** Subset of members who have arrived at their meeting seat. */
+  private meetingArrivedIds = new Set<string>()
+  /** Shared adjourn time; null until all remaining members have arrived. */
+  private meetingEndsAt: number | null = null
   private switching = false
   /** Min zoom: whole map fits in viewport (contain); gutters OK. */
   private minZoom = 1
@@ -237,6 +271,7 @@ export class OfficeScene extends Phaser.Scene {
     this.collision = []
     this.spawns = []
     this.workstations = []
+    this.pois = []
     this.deskByAgentId.clear()
   }
 
@@ -247,6 +282,13 @@ export class OfficeScene extends Phaser.Scene {
     this.shadows.clear()
     this.runtimes.clear()
     this.deskByAgentId.clear()
+    this.clearMeetingSession()
+  }
+
+  private clearMeetingSession() {
+    this.meetingMemberIds.clear()
+    this.meetingArrivedIds.clear()
+    this.meetingEndsAt = null
   }
 
   /** Mount tilemap by registry id; returns false on failure (sets page error). */
@@ -425,11 +467,17 @@ export class OfficeScene extends Phaser.Scene {
   private parseObjects(map: Phaser.Tilemaps.Tilemap) {
     this.spawns = []
     this.workstations = []
+    this.pois = []
     const byIndex = new Map<number, { spawn?: Point; computer?: Point }>()
 
     for (const obj of map.getObjectLayer('objects')?.objects ?? []) {
       const name = obj.name || ''
       const pt: Point = { x: obj.x ?? 0, y: obj.y ?? 0 }
+      const poiKind = parsePoiKind(name)
+      if (poiKind) {
+        this.pois.push({ key: name, point: pt, kind: poiKind })
+        continue
+      }
       const spawnIdx = parseObjectIndex(name, 'spawn_')
       if (spawnIdx !== null) {
         const slot = byIndex.get(spawnIdx) ?? {}
@@ -604,7 +652,17 @@ export class OfficeScene extends Phaser.Scene {
         modeUntil: this.time.now + durationMs,
         targetX: spawn.x,
         targetY: spawn.y,
+        goalX: spawn.x,
+        goalY: spawn.y,
+        path: [],
         dir,
+        faceDir: dir,
+        fidgetUntil: this.time.now + scheduleFidgetMs(),
+        fidget: 'none',
+        fidgetEndsAt: 0,
+        wanderPhase: 'none',
+        poiKind: null,
+        poiClaimKey: null,
         frameTick: 0,
         walkFrame: 0,
       })
@@ -709,48 +767,422 @@ export class OfficeScene extends Phaser.Scene {
     return this.snapToWalkable({ x: 5 * this.cell, y: 5 * this.cell })
   }
 
+  /** Soft-claimed POI keys across all agents (to + dwell). */
+  private busyPoiKeys(): Set<string> {
+    const busy = new Set<string>()
+    for (const rt of this.runtimes.values()) {
+      if (rt.poiClaimKey) busy.add(rt.poiClaimKey)
+    }
+    return busy
+  }
+
+  /**
+   * Desk-clock solo errand: lounge/coffee with soft claim, else random.
+   * Never picks meeting (group meetings are scene-scheduled).
+   */
+  private pickSoloWanderTarget(): WanderDest {
+    const picked = pickSoloPoi(this.pois, this.busyPoiKeys())
+    if (picked) {
+      return {
+        point: this.snapToWalkable(picked.point),
+        kind: picked.kind,
+        claimKey: picked.key,
+      }
+    }
+    return { point: this.randomWalkTarget(), kind: 'random', claimKey: null }
+  }
+
+  /** End wander trip: walk back to desk as working. */
+  private beginWalkHome(
+    id: string,
+    sprite: Phaser.GameObjects.Sprite,
+    rt: AgentRuntime,
+    now: number,
+  ) {
+    const wasMeetingMember = this.meetingMemberIds.has(id)
+    rt.mode = 'working'
+    rt.wanderPhase = 'none'
+    rt.poiKind = null
+    rt.poiClaimKey = null
+    rt.fidget = 'none'
+    rt.modeUntil = now + workingDurationMs()
+    const desk = this.workstationFor(id)
+    if (desk) {
+      if (desk.computer) {
+        rt.faceDir = faceToward(desk.spawn, desk.computer)
+      }
+      this.setWalkGoal(sprite, rt, desk.spawn, { stretchTimer: true })
+      rt.fidgetUntil = now + scheduleFidgetMs()
+    } else {
+      rt.mode = 'idle'
+      rt.path = []
+    }
+    if (wasMeetingMember) {
+      this.meetingMemberIds.delete(id)
+      this.meetingArrivedIds.delete(id)
+      this.afterMeetingMembershipChange(now)
+    }
+  }
+
+  /**
+   * Start outbound wander. Pass `dest` for scene meeting recruitment;
+   * otherwise desk clock uses solo pool (no meeting).
+   */
+  private beginWanderTrip(
+    sprite: Phaser.GameObjects.Sprite,
+    rt: AgentRuntime,
+    now: number,
+    dest?: WanderDest,
+  ) {
+    const target = dest ?? this.pickSoloWanderTarget()
+    rt.mode = 'wander'
+    rt.wanderPhase = 'to'
+    rt.poiKind = target.kind
+    rt.poiClaimKey = target.claimKey
+    rt.fidget = 'none'
+    rt.modeUntil = now + travelTimeoutMs()
+    this.setWalkGoal(sprite, rt, target.point)
+  }
+
+  /**
+   * Scene-level group meeting: recruit 2–3 at-desk workers to free meeting seats.
+   * Always re-arms cooldown (40–80s), including failed attempts.
+   * Skips while a meeting session is already in progress.
+   */
+  private tryStartMeeting(now: number) {
+    if (this.meetingMemberIds.size > 0) return
+    if (now < this.meetingCooldownUntil) return
+    this.meetingCooldownUntil = now + meetingCooldownMs()
+
+    const busy = this.busyPoiKeys()
+    const freeSeats = this.pois.filter(
+      (p) => p.kind === 'meeting' && !busy.has(p.key),
+    )
+    if (freeSeats.length < 2) return
+
+    const recruitable: Array<{ id: string; rt: AgentRuntime; sprite: Phaser.GameObjects.Sprite }> =
+      []
+    for (const [id, rt] of this.runtimes) {
+      if (rt.mode !== 'working') continue
+      const sprite = this.sprites.get(id)
+      if (!sprite) continue
+      const atDesk =
+        rt.path.length === 0 && this.near(sprite.x, sprite.y, rt.goalX, rt.goalY, 6)
+      if (!atDesk) continue
+      recruitable.push({ id, rt, sprite })
+    }
+    if (recruitable.length < 2) return
+
+    const k = meetingSize(freeSeats.length, recruitable.length)
+    if (k < 2) return
+
+    // Shuffle copies so we don't bias toward Map insertion order.
+    const seats = [...freeSeats]
+    const agents = [...recruitable]
+    for (let i = seats.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[seats[i], seats[j]] = [seats[j], seats[i]]
+    }
+    for (let i = agents.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[agents[i], agents[j]] = [agents[j], agents[i]]
+    }
+
+    this.clearMeetingSession()
+    for (let i = 0; i < k; i++) {
+      const seat = seats[i]
+      const agent = agents[i]
+      this.meetingMemberIds.add(agent.id)
+      this.beginWanderTrip(agent.sprite, agent.rt, now, {
+        point: this.snapToWalkable(seat.point),
+        kind: 'meeting',
+        claimKey: seat.key,
+      })
+    }
+  }
+
+  /**
+   * After a member leaves/drops while gathering: start session if all arrived,
+   * or cancel if fewer than 2 remain. No-op once the shared clock is running
+   * (except clearing when the set empties via beginWalkHome).
+   */
+  private afterMeetingMembershipChange(now: number) {
+    if (this.meetingMemberIds.size === 0) {
+      this.meetingArrivedIds.clear()
+      this.meetingEndsAt = null
+      return
+    }
+    // In-session adjourn: members leave via shared endsAt; just wait until empty.
+    if (this.meetingEndsAt != null) return
+
+    if (this.meetingMemberIds.size < 2) {
+      const leftover = [...this.meetingMemberIds]
+      this.clearMeetingSession()
+      for (const id of leftover) {
+        const rt = this.runtimes.get(id)
+        const sprite = this.sprites.get(id)
+        if (rt && sprite) this.beginWalkHome(id, sprite, rt, now)
+      }
+      return
+    }
+
+    if (
+      [...this.meetingMemberIds].every((mid) => this.meetingArrivedIds.has(mid))
+    ) {
+      this.beginMeetingSession(now)
+    }
+  }
+
+  /** All remaining members are seated → start shared dwell clock. */
+  private beginMeetingSession(now: number) {
+    if (this.meetingEndsAt != null) return
+    this.meetingEndsAt = now + dwellMs('meeting')
+    for (const id of this.meetingMemberIds) {
+      const rt = this.runtimes.get(id)
+      if (!rt || rt.poiKind !== 'meeting') continue
+      rt.modeUntil = this.meetingEndsAt
+      rt.wanderPhase = 'dwell'
+    }
+  }
+
+  private startPoiDwell(
+    id: string,
+    rt: AgentRuntime,
+    sprite: Phaser.GameObjects.Sprite,
+    now: number,
+  ) {
+    rt.wanderPhase = 'dwell'
+    rt.path = []
+    const anim = `idle-${rt.persona.skin}-${rt.dir}`
+    if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
+
+    // Solo (and random): personal dwell clock.
+    if (rt.poiKind !== 'meeting' || !this.meetingMemberIds.has(id)) {
+      rt.modeUntil = now + dwellMs(rt.poiKind ?? 'random')
+      return
+    }
+
+    // Meeting: stand and wait until everyone arrives, then shared clock.
+    this.meetingArrivedIds.add(id)
+    if (this.meetingEndsAt != null) {
+      rt.modeUntil = this.meetingEndsAt
+      return
+    }
+    // Hold in place while others are still walking (travel upper bound ~40s).
+    rt.modeUntil = now + 60_000
+    if (
+      [...this.meetingMemberIds].every((mid) => this.meetingArrivedIds.has(mid))
+    ) {
+      this.beginMeetingSession(now)
+    }
+  }
+
+  /** Cell center is walkable for foot hitbox (BFS node test). */
+  private cellCenterWalkable(tx: number, ty: number): boolean {
+    if (tx < 0 || ty < 0 || tx >= this.mapW || ty >= this.mapH) return false
+    return this.walkableWorld(
+      tx * this.cell + this.cell / 2,
+      ty * this.cell + this.cell / 2,
+    )
+  }
+
+  /**
+   * 8-dir BFS on collision grid → cell-center waypoints (excludes start cell).
+   * Diagonal steps require both orthogonal neighbors walkable (no corner-cutting).
+   * Empty = no path. Walk anim stays 4-dir (Pipoya).
+   */
+  private findPath(from: Point, to: Point): Point[] {
+    const sx = Math.floor(from.x / this.cell)
+    const sy = Math.floor(from.y / this.cell)
+    const gx = Math.floor(to.x / this.cell)
+    const gy = Math.floor(to.y / this.cell)
+    if (sx === gx && sy === gy) return []
+
+    const startKey = cellKey(sx, sy)
+    const goalKey = cellKey(gx, gy)
+    const came = new Map<string, string>()
+    const q: Array<{ tx: number; ty: number }> = [{ tx: sx, ty: sy }]
+    const seen = new Set<string>([startKey])
+    const dirs = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ]
+
+    let found = false
+    while (q.length) {
+      const { tx, ty } = q.shift()!
+      if (tx === gx && ty === gy) {
+        found = true
+        break
+      }
+      for (const [dx, dy] of dirs) {
+        const nx = tx + dx
+        const ny = ty + dy
+        const key = cellKey(nx, ny)
+        if (seen.has(key)) continue
+        if (!this.cellCenterWalkable(nx, ny)) continue
+        // Diagonal: both cardinal neighbors must be free (don't clip desk corners).
+        if (dx !== 0 && dy !== 0) {
+          if (!this.cellCenterWalkable(tx + dx, ty) || !this.cellCenterWalkable(tx, ty + dy)) {
+            continue
+          }
+        }
+        seen.add(key)
+        came.set(key, cellKey(tx, ty))
+        q.push({ tx: nx, ty: ny })
+      }
+    }
+
+    if (!found) return []
+
+    const cells: Array<{ tx: number; ty: number }> = []
+    let cur = goalKey
+    while (cur !== startKey) {
+      const [cx, cy] = cur.split(',').map(Number)
+      cells.push({ tx: cx, ty: cy })
+      const prev = came.get(cur)
+      if (!prev) return []
+      cur = prev
+    }
+    cells.reverse()
+    return cells.map(({ tx, ty }) => ({
+      x: tx * this.cell + this.cell / 2,
+      y: ty * this.cell + this.cell / 2,
+    }))
+  }
+
+  /**
+   * Set walk goal + BFS path. Extends modeUntil for long paths when requested.
+   * On failure: stand still (path empty, goal = current).
+   */
+  private setWalkGoal(
+    sprite: Phaser.GameObjects.Sprite,
+    rt: AgentRuntime,
+    dest: Point,
+    opts?: { stretchTimer?: boolean },
+  ) {
+    const goal = this.snapToWalkable(dest)
+    rt.goalX = goal.x
+    rt.goalY = goal.y
+    const path = this.findPath({ x: sprite.x, y: sprite.y }, goal)
+    if (!path.length) {
+      if (this.near(sprite.x, sprite.y, goal.x, goal.y, this.cell)) {
+        rt.path = []
+        rt.targetX = goal.x
+        rt.targetY = goal.y
+        return
+      }
+      // Unreachable: cancel trip, stay put.
+      rt.path = []
+      rt.goalX = sprite.x
+      rt.goalY = sprite.y
+      rt.targetX = sprite.x
+      rt.targetY = sprite.y
+      return
+    }
+    rt.path = path
+    rt.targetX = path[0].x
+    rt.targetY = path[0].y
+    if (opts?.stretchTimer) {
+      // ~cell / SPEED seconds per hop, plus a little slack.
+      const extraMs = path.length * ((this.cell / (SPEED * CHAR_SCALE)) * 1000) * 0.35
+      rt.modeUntil = Math.max(rt.modeUntil, this.time.now + extraMs + 1500)
+    }
+  }
+
+  private followPath(
+    sprite: Phaser.GameObjects.Sprite,
+    rt: AgentRuntime,
+    delta: number,
+  ) {
+    if (!rt.path.length) {
+      if (this.near(sprite.x, sprite.y, rt.goalX, rt.goalY, 6)) {
+        sprite.x = rt.goalX
+        sprite.y = rt.goalY
+        const anim = `idle-${rt.persona.skin}-${rt.dir}`
+        if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
+      }
+      return
+    }
+
+    rt.targetX = rt.path[0].x
+    rt.targetY = rt.path[0].y
+    if (this.near(sprite.x, sprite.y, rt.targetX, rt.targetY, 5)) {
+      rt.path.shift()
+      if (!rt.path.length) {
+        sprite.x = rt.goalX
+        sprite.y = rt.goalY
+        const anim = `idle-${rt.persona.skin}-${rt.dir}`
+        if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
+        return
+      }
+      rt.targetX = rt.path[0].x
+      rt.targetY = rt.path[0].y
+    }
+    this.stepToward(sprite, rt, delta)
+  }
+
   update(_time: number, delta: number) {
     if (this.assetsFailed || this.switching) return
     const now = this.time.now
     const plates: NameplateView[] = []
     const cam = this.cameras.main
 
+    this.tryStartMeeting(now)
+
     for (const [id, rt] of this.runtimes) {
       const sprite = this.sprites.get(id)
       if (!sprite) continue
 
       if (now >= rt.modeUntil) {
-        const n = nextMode(rt.mode)
-        rt.mode = n.mode
-        rt.modeUntil = now + n.durationMs
         if (rt.mode === 'wander') {
-          const t = this.randomWalkTarget()
-          rt.targetX = t.x
-          rt.targetY = t.y
-        } else if (rt.mode === 'working') {
-          const desk = this.workstationFor(id)
-          if (desk) {
-            const home = this.snapToWalkable(desk.spawn)
-            rt.targetX = home.x
-            rt.targetY = home.y
+          // Travel timeout or dwell finished → home (never flash mid-trip via short clock).
+          this.beginWalkHome(id, sprite, rt, now)
+        } else {
+          const n = nextDeskMode()
+          if (n.mode === 'wander') {
+            this.beginWanderTrip(sprite, rt, now)
           } else {
-            rt.mode = 'idle'
+            rt.mode = 'working'
+            rt.wanderPhase = 'none'
+            rt.poiKind = null
+            rt.poiClaimKey = null
+            rt.fidget = 'none'
+            rt.modeUntil = now + workingDurationMs()
           }
         }
       }
 
+      // Arrived at POI while traveling → start dwell (stand idle).
       if (
-        rt.mode === 'wander' ||
-        (rt.mode === 'working' && !this.near(sprite.x, sprite.y, rt.targetX, rt.targetY, 6))
+        rt.mode === 'wander' &&
+        rt.wanderPhase === 'to' &&
+        rt.path.length === 0 &&
+        this.near(sprite.x, sprite.y, rt.goalX, rt.goalY, 6)
       ) {
-        this.stepToward(sprite, rt, delta)
-      } else if (rt.mode === 'working') {
-        const desk = this.workstationFor(id)
-        if (desk?.computer) {
-          rt.dir = faceToward(desk.spawn, desk.computer)
-        }
+        this.startPoiDwell(id, rt, sprite, now)
+      }
+
+      const atDesk =
+        rt.mode === 'working' &&
+        rt.path.length === 0 &&
+        this.near(sprite.x, sprite.y, rt.goalX, rt.goalY, 6)
+
+      if (rt.mode === 'wander' && rt.wanderPhase === 'to') {
+        this.followPath(sprite, rt, delta)
+      } else if (rt.mode === 'wander' && rt.wanderPhase === 'dwell') {
         const anim = `idle-${rt.persona.skin}-${rt.dir}`
         if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
+      } else if (rt.mode === 'working' && !atDesk) {
+        this.followPath(sprite, rt, delta)
+      } else if (rt.mode === 'working' && atDesk) {
+        this.updateWorkingFidget(sprite, rt, now)
       } else {
         const anim = `idle-${rt.persona.skin}-${rt.dir}`
         if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
@@ -811,6 +1243,48 @@ export class OfficeScene extends Phaser.Scene {
     return null
   }
 
+  /**
+   * Fake-alive at desk: glance sideways or flash walk mid-frame, then restore faceDir.
+   * Must not force faceToward every frame (that kills fidget).
+   */
+  private updateWorkingFidget(
+    sprite: Phaser.GameObjects.Sprite,
+    rt: AgentRuntime,
+    now: number,
+  ) {
+    if (rt.fidget !== 'none') {
+      if (now >= rt.fidgetEndsAt) {
+        rt.fidget = 'none'
+        rt.dir = rt.faceDir
+        rt.fidgetUntil = now + rescheduleFidgetMs()
+        const anim = `idle-${rt.persona.skin}-${rt.faceDir}`
+        sprite.play(anim)
+      }
+      return
+    }
+
+    if (now >= rt.fidgetUntil) {
+      if (Math.random() < 0.55) {
+        rt.fidget = 'glance'
+        rt.dir = glanceDir(rt.faceDir)
+        rt.fidgetEndsAt = now + 1_000 + Math.random() * 1_000
+        sprite.play(`idle-${rt.persona.skin}-${rt.dir}`)
+      } else {
+        rt.fidget = 'step'
+        rt.dir = rt.faceDir
+        rt.fidgetEndsAt = now + 250 + Math.random() * 250
+        // Walk mid-frame for this facing (base + 1 of the 3-frame strip).
+        const base = rt.persona.skin * 12 + rt.faceDir * 3
+        sprite.anims.stop()
+        sprite.setFrame(base + 1)
+      }
+      return
+    }
+
+    const anim = `idle-${rt.persona.skin}-${rt.dir}`
+    if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
+  }
+
   private near(x: number, y: number, tx: number, ty: number, eps: number) {
     return Math.hypot(tx - x, ty - y) <= eps
   }
@@ -826,18 +1300,15 @@ export class OfficeScene extends Phaser.Scene {
     if (dist < 2) {
       sprite.x = rt.targetX
       sprite.y = rt.targetY
-      const anim = `idle-${rt.persona.skin}-${rt.dir}`
-      if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
       return
     }
     const step = (SPEED * CHAR_SCALE * delta) / 1000
     const nx = sprite.x + (dx / dist) * Math.min(step, dist)
     const ny = sprite.y + (dy / dist) * Math.min(step, dist)
 
+    // Follow grid path: slide on one axis if the other is blocked; never cancel the goal.
     if (this.walkableWorld(nx, sprite.y)) sprite.x = nx
-    else rt.targetX = sprite.x
     if (this.walkableWorld(sprite.x, ny)) sprite.y = ny
-    else rt.targetY = sprite.y
 
     if (Math.abs(dx) > Math.abs(dy)) rt.dir = dx < 0 ? 1 : 2
     else rt.dir = dy < 0 ? 3 : 0
