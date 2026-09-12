@@ -151,7 +151,11 @@ for (const [id, entry] of Object.entries(registry?.maps || {})) {
   }
 
   if (nonzeroCells(layerByName(map, 'start')) < 1) fail(`${id}: start layer empty`)
-  if (nonzeroCells(layerByName(map, 'collisions')) < 1) fail(`${id}: collisions empty`)
+  if (nonzeroCells(layerByName(map, 'collisions')) < 1) {
+    console.warn(
+      `WARN: ${id}: collisions layer empty (OK — rely on tileset collides / walls; use collisions only to patch gaps)`,
+    )
+  }
   if (nonzeroCells(layerByName(map, 'exit')) < 1) fail(`${id}: exit empty`)
 
   const exit = layerByName(map, 'exit')

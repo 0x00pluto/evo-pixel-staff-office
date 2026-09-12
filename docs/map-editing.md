@@ -130,7 +130,7 @@ pnpm dev:office               # 浏览器硬刷新
 | `aboveFurniture` | 可 | 家具之上、**角色之下**（须在 `floorLayer` 下面） |
 | `abovePlayer1`…`3` | 可 | 盖住角色（须在 `floorLayer` **之上**） |
 | `floorLayer` | **勿删** | objectgroup；z-order 切点 |
-| `collisions` | **必查** | 有瓦不可走（补洞） |
+| `collisions` | 层须存在；**可空** | 漏标补洞（有瓦不可走）；办公室主要靠家具 `collides` |
 | `start` | 慎改 | 默认出生 |
 | `office-door` | 慎改 | 命名入口（`startLayer=true`） |
 | `from-office` | 慎改 | 世界图出门落点 |
