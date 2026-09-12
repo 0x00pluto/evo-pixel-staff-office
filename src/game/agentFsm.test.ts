@@ -9,6 +9,7 @@ import {
   meetingCooldownMs,
   meetingSize,
   nextDeskMode,
+  parseDwellFacing,
   pickSoloPoi,
   randomInt,
   rescheduleFidgetMs,
@@ -99,6 +100,31 @@ describe('faceToward', () => {
     expect(faceToward({ x: 0, y: 0 }, { x: 1, y: -10 })).toBe(3)
     expect(faceToward({ x: 0, y: 0 }, { x: 1, y: 10 })).toBe(0)
     expect(faceToward({ x: 0, y: 0 }, { x: 5, y: -5 })).toBe(3)
+  })
+})
+
+describe('parseDwellFacing', () => {
+  it('maps up/down/left/right to Pipoya dirs', () => {
+    expect(parseDwellFacing('down')).toBe(0)
+    expect(parseDwellFacing('left')).toBe(1)
+    expect(parseDwellFacing('right')).toBe(2)
+    expect(parseDwellFacing('up')).toBe(3)
+  })
+
+  it('is case-insensitive and trims whitespace', () => {
+    expect(parseDwellFacing('Up')).toBe(3)
+    expect(parseDwellFacing('  LEFT  ')).toBe(1)
+  })
+
+  it('defaults to south for missing, digits, and aliases', () => {
+    expect(parseDwellFacing(undefined)).toBe(0)
+    expect(parseDwellFacing(null)).toBe(0)
+    expect(parseDwellFacing(0)).toBe(0)
+    expect(parseDwellFacing(3)).toBe(0)
+    expect(parseDwellFacing('north')).toBe(0)
+    expect(parseDwellFacing('facing')).toBe(0)
+    expect(parseDwellFacing('direction')).toBe(0)
+    expect(parseDwellFacing('')).toBe(0)
   })
 })
 

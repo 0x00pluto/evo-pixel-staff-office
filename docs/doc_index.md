@@ -9,6 +9,7 @@
 - `docs/dev-guide.md`: 新人开发指南——架构、数据流、本地启动、游戏层约定、**代码检索顺序**；**对齐 WA 人物做法**（非 24 套数量）、脚底碰撞盒 24×24；Vitest 单测（`src/**/*.test.ts`，`pnpm test`）
 - `docs/map-editing.md`: 改图交接手册——心智模型（`floorLayer`）、任务菜谱、碰撞 / exit / objects、踩坑清单；**art/maps + art/tilesets**、`pack:art-tilesets` 多目录顺序锁定
 - `docs/map-poi.md`: 闲逛 POI 约定——arity×place（solo 差事软占 vs meeting 集体事件）；命名、摆点、Tiled 菜谱、运行时语义；单一事实源
+- `docs/map-facing.md`: 朝向约定——工位 spawn→computer vs POI `dwellFacing`（up/down/left/right；漏标朝南）；不用 `direction`/`facing`
 - `art/`: 作者工作区——`maps/`（Tiled 工程）、`tilesets/<pack>/`（条带 + manifest）；不进 dist / npx
 - `public/assets/CREDITS.md`: WA 风瓦片（CC-BY-SA 3.0）、Pipoya、缝合像素 Fusion Pixel（HUD 字体 OFL）署名；含 world-map 本地测试导入说明
 - `public/fonts/`: Fusion Pixel 12px proportional zh_hans（`src/index.css` `@font-face`）

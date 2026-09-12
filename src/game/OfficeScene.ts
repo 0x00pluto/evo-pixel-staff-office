@@ -10,6 +10,7 @@ import {
   meetingCooldownMs,
   meetingSize,
   nextDeskMode,
+  parseDwellFacing,
   pickSoloPoi,
   rescheduleFidgetMs,
   scheduleFidgetMs,
@@ -51,7 +52,13 @@ const NAMEPLATE_GAP = 12
 
 type Point = { x: number; y: number }
 /** Map POI with Tiled object name as soft-claim key (e.g. poi_meeting_0). */
-type MapPoi = { key: string; point: Point; kind: PoiKind }
+type MapPoi = {
+  key: string
+  point: Point
+  kind: PoiKind
+  /** Idle facing while dwelling; 0=down … 3=up (from dwellFacing). */
+  dwellFacing: 0 | 1 | 2 | 3
+}
 
 type WanderDest = { point: Point; kind: WanderTargetKind; claimKey: string | null }
 
@@ -91,6 +98,22 @@ function layerProp(
   name: string,
 ): string | boolean | number | undefined {
   const props = layer?.properties as
+    | Array<{ name: string; value: string | boolean | number }>
+    | Record<string, string | boolean | number>
+    | undefined
+  if (!props) return undefined
+  if (Array.isArray(props)) {
+    return props.find((p) => p.name === name)?.value
+  }
+  return props[name]
+}
+
+/** Tiled object custom property (array or record form from Phaser). */
+function objectProp(
+  obj: Phaser.Types.Tilemaps.TiledObject,
+  name: string,
+): string | boolean | number | undefined {
+  const props = obj.properties as
     | Array<{ name: string; value: string | boolean | number }>
     | Record<string, string | boolean | number>
     | undefined
@@ -475,7 +498,12 @@ export class OfficeScene extends Phaser.Scene {
       const pt: Point = { x: obj.x ?? 0, y: obj.y ?? 0 }
       const poiKind = parsePoiKind(name)
       if (poiKind) {
-        this.pois.push({ key: name, point: pt, kind: poiKind })
+        this.pois.push({
+          key: name,
+          point: pt,
+          kind: poiKind,
+          dwellFacing: parseDwellFacing(objectProp(obj, 'dwellFacing')),
+        })
         continue
       }
       const spawnIdx = parseObjectIndex(name, 'spawn_')
@@ -953,6 +981,11 @@ export class OfficeScene extends Phaser.Scene {
   ) {
     rt.wanderPhase = 'dwell'
     rt.path = []
+    // Map dwellFacing when claimed; random / missing → south. Never touch desk faceDir.
+    const claimed = rt.poiClaimKey
+      ? this.pois.find((p) => p.key === rt.poiClaimKey)
+      : undefined
+    rt.dir = claimed?.dwellFacing ?? 0
     const anim = `idle-${rt.persona.skin}-${rt.dir}`
     if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
 

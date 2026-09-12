@@ -178,6 +178,28 @@ export function faceToward(
   return dy < 0 ? 3 : 0
 }
 
+/**
+ * Map POI dwell facing from Tiled `dwellFacing` (up/down/left/right).
+ * Missing / invalid → south (0). Digits and aliases are not accepted.
+ */
+export function parseDwellFacing(
+  value: string | boolean | number | null | undefined,
+): 0 | 1 | 2 | 3 {
+  if (typeof value !== 'string') return 0
+  switch (value.trim().toLowerCase()) {
+    case 'down':
+      return 0
+    case 'left':
+      return 1
+    case 'right':
+      return 2
+    case 'up':
+      return 3
+    default:
+      return 0
+  }
+}
+
 /** Pick a glance direction different from faceDir (left/right preferred). */
 export function glanceDir(faceDir: 0 | 1 | 2 | 3): 0 | 1 | 2 | 3 {
   if (faceDir === 1 || faceDir === 2) {

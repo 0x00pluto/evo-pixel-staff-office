@@ -57,6 +57,7 @@ poi_<kind>_<n>
 3. **避开**任意 `computer_*` 所在格（不要站到别人桌上）。
 4. 与最近家具看起来「人站在旁边用」即可，不必叠在沙发精灵正中。
 5. 数量建议：每类 **2–3** 个；`meeting` 至少 **2** 才能触发集体开会。无任何 `poi_*` 时，solo 闲逛回退为全图随机可走点。
+6. **到站朝向**：自定义属性 **`dwellFacing`** = `up` / `down` / `left` / `right`；漏标朝南。详见 [`map-facing.md`](./map-facing.md)。
 
 ## Tiled 菜谱
 
@@ -64,12 +65,13 @@ poi_<kind>_<n>
 pnpm unpack:tilesets   # 可选：改 collides 前
 # Tiled: File → Open → public/assets/maps/company-25.json
 # Layers → objects → Insert Point → 命名 poi_<kind>_<n> → 拖到可走位置
+# Custom Properties → dwellFacing = up|down|left|right（默认 down）
 # File → Save（JSON）
 pnpm gen:assets        # pack + 现有校验（当前不强制 POI 数量）
-pnpm dev:office        # 硬刷新观察闲逛目的地
+pnpm dev:office        # 硬刷新观察闲逛目的地与朝向
 ```
 
-微调：只拖 Point 坐标，**不要改名**成非约定字符串，否则运行时收不到。
+微调：只拖 Point 坐标或改 `dwellFacing`，**不要改名**成非约定字符串，否则运行时收不到。朝向约定见 [`map-facing.md`](./map-facing.md)。
 
 ## 运行时语义
 
@@ -81,7 +83,7 @@ pnpm dev:office        # 硬刷新观察闲逛目的地
 2. 工位时钟触发 wander → `pickSoloWanderTarget`：仅 `lounge` / `coffee` / `random`（**不含 meeting**）。
 3. 约 **85%** 优先空闲同类点（`poiClaimKey` 不在 busy 集合）；该 kind 全满 → 另一 solo kind；再无 → `random`。
 4. 出发写入 `poiClaimKey`；`wanderPhase=to`；旅行时钟约 **25–40s**（防卡死，不会因短时钟中途闪回）。
-5. 到站 → `dwell`（按 kind 停留）；结束或超时 → 清空 claim，BFS 走回自己的 `spawn`。
+5. 到站 → `dwell`（按 kind 停留；朝向用该点的 `dwellFacing`，漏标朝南，见 [`map-facing.md`](./map-facing.md)）；结束或超时 → 清空 claim，BFS 走回自己的 `spawn`。
 
 ### 开会事件（group / meeting）
 

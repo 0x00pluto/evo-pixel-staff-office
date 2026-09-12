@@ -180,7 +180,7 @@ Jitsi / clock / website / audio 等 WA 功能层**不导入**。
 
 ### 3.1 摆闲逛 POI（休息 / 咖啡 / 会议）
 
-闲逛目的地用 `poi_<kind>_<n>` Point，约定见 **[`docs/map-poi.md`](./map-poi.md)**（命名、可走格、Tiled 步骤、运行时语义）。与工位对象同层 `objects`，勿与 `spawn_*` / `computer_*` 混用同一数字语义。
+闲逛目的地用 `poi_<kind>_<n>` Point，约定见 **[`docs/map-poi.md`](./map-poi.md)**（命名、可走格、Tiled 步骤、运行时语义）。到站脸朝哪用自定义属性 **`dwellFacing`**，见 **[`docs/map-facing.md`](./map-facing.md)**。与工位对象同层 `objects`，勿与 `spawn_*` / `computer_*` 混用同一数字语义。
 
 ### 4. 标碰撞（人走不过去）
 

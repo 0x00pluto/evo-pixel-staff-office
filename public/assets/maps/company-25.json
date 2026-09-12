@@ -937,6 +937,12 @@
                  "name":"poi_lounge_0",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"right"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -950,6 +956,12 @@
                  "name":"poi_lounge_1",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"left"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -963,6 +975,12 @@
                  "name":"poi_lounge_2",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"down"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -976,6 +994,12 @@
                  "name":"poi_lounge_3",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"down"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -989,6 +1013,12 @@
                  "name":"poi_coffee_0",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"right"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1002,12 +1032,18 @@
                  "name":"poi_coffee_1",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"left"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":79.5796275559146,
-                 "y":309.177583333542
+                 "x":80.0324850869353,
+                 "y":315.970446298853
                 }, 
                 {
                  "height":0,
@@ -1015,12 +1051,18 @@
                  "name":"poi_meeting_0",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"right"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":876.616636371505,
-                 "y":212.301566692634
+                 "x":879.78663908865,
+                 "y":212.754424223655
                 }, 
                 {
                  "height":0,
@@ -1028,6 +1070,12 @@
                  "name":"poi_meeting_1",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"left"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1041,6 +1089,12 @@
                  "name":"poi_meeting_2",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"dwellFacing",
+                         "type":"string",
+                         "value":"left"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
