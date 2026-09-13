@@ -46,5 +46,9 @@ export function createOfficeGame(
       const scene = game.scene.getScene('OfficeScene') as OfficeScene | null
       scene?.reloadAgents(next)
     },
+    setFootDebug: (on) => {
+      const scene = game.scene.getScene('OfficeScene') as OfficeScene | null
+      scene?.setFootDebug(on)
+    },
   }
 }

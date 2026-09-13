@@ -4,6 +4,8 @@
  *
  * - Each subdirectory of art/tilesets/ with manifest.json is one pack.
  * - Directory name = tileset name = public/.../tilesets/<name>.{png,tsj}
+ * - Only top-level src/*.png are packed (horizontal = footprint, vertical = frames).
+ * - raw/ is author originals (WA crops, .piskel) — never scanned or packed.
  * - Frame 0 (map-painted tiles) never moves. Extra frames spill elsewhere.
  * - Cells claimed by an entry are lifetime-owned (shrink/delete keep holes).
  * - .tsj animations are authored in Tiled; pack merges/preserves existing tiles[].
@@ -188,12 +190,35 @@ function listPackDirs() {
     .sort()
 }
 
-function listSrcPngs(srcDir) {
+const SRC_WARN_EXTS = new Set(['.piskel', '.aseprite', '.ase', '.psd', '.gif'])
+
+/** Top-level src/*.png only; warn on author-source leftovers that belong in raw/. */
+function listSrcPngs(srcDir, packName) {
   if (!fs.existsSync(srcDir)) return []
-  return fs
-    .readdirSync(srcDir)
-    .filter((n) => n.toLowerCase().endsWith('.png'))
-    .sort()
+  const names = fs.readdirSync(srcDir, { withFileTypes: true })
+  const pngs = []
+  for (const ent of names) {
+    if (ent.name.startsWith('.')) continue
+    if (ent.isDirectory()) {
+      console.warn(
+        `WARN: [${packName}] unexpected directory art/tilesets/${packName}/src/${ent.name}/ — ` +
+          `packer only reads top-level *.png; put originals under raw/`,
+      )
+      continue
+    }
+    const lower = ent.name.toLowerCase()
+    if (lower.endsWith('.png')) {
+      pngs.push(ent.name)
+      continue
+    }
+    const ext = path.extname(lower)
+    if (SRC_WARN_EXTS.has(ext)) {
+      console.warn(
+        `WARN: [${packName}] ${ent.name} under src/ is ignored — move to art/tilesets/${packName}/raw/`,
+      )
+    }
+  }
+  return pngs.sort()
 }
 
 function loadManifest(manifestPath, packName) {
@@ -519,7 +544,7 @@ function packOne(packName) {
   const manifest = loadManifest(manifestPath, packName)
   const columns = manifest.columns
   const maxH = manifest.maxAtlasHeightPx
-  const diskFiles = listSrcPngs(srcDir)
+  const diskFiles = listSrcPngs(srcDir, packName)
   const diskSet = new Set(diskFiles)
 
   for (const e of manifest.entries) {

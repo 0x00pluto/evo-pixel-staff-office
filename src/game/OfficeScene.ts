@@ -21,6 +21,30 @@ import {
   type WanderTargetKind,
 } from './agentFsm'
 import {
+  FOOT_BODY_H,
+  FOOT_BODY_SOUTH,
+  FOOT_BODY_W,
+  footBoxClear,
+  footSafePointInCell,
+} from './footHitbox'
+import {
+  applianceKeyFromSlotKey,
+  buildPropClusters,
+  isCausalPoiKind,
+  isOverlayPropLayer,
+  parsePoiStand,
+  parsePropActivation,
+  parseStandSeed,
+  parseStandSides,
+  parseTilePoiKind,
+  PROP_SCAN_LAYERS,
+  slotKeyFor,
+  tilePropCollides,
+  type PropCell,
+  type PropCluster,
+} from './mapProp'
+import { isWallHugMiddleNode } from './pathClearance'
+import {
   DEFAULT_MAP_ID,
   getMapEntry,
   getMapKind,
@@ -35,18 +59,13 @@ const TILE = 32
 const CHAR_SCALE = 1
 const CELL = TILE * CHAR_SCALE
 const SPEED = 55
+/** No meaningful foot movement for this long → repath (corner slide lock). */
+const STUCK_REPATH_MS = 500
+const STUCK_MOVE_EPS = 1.5
+/** Max repaths per setWalkGoal (avoid oscillation). */
+const STUCK_REPATH_MAX = 3
 /** Align WA DEPTH_OVERLAY_INDEX: layers after floorLayer draw above agents. */
 const DEPTH_OVERLAY = 1_000_000
-/**
- * Foot hitbox. Sprite origin is (0.5, 1) = feet center.
- * Height 24 (taller than WA's 16) so feet stop short of desk overhang from the south;
- * BODY_SOUTH pads below the feet so approaching a desk from the north doesn't put
- * the foot shadow on the desk top; width 24 is office visual margin (WA body is 16×16).
- */
-const BODY_W = 24
-const BODY_H = 24
-/** Extra hitbox below feet (south); keeps shadow off desk when closing from the north. */
-const BODY_SOUTH = 8
 /** World px above sprite top so the plate sits fully over the head (WA ≈ 2; we have 2 lines + hats). */
 const NAMEPLATE_GAP = 12
 
@@ -62,7 +81,16 @@ type MapPoi = {
 
 type WanderDest = { point: Point; kind: WanderTargetKind; claimKey: string | null }
 
-const POI_KINDS: PoiKind[] = ['lounge', 'coffee', 'meeting']
+const POI_KINDS: PoiKind[] = ['lounge', 'coffee', 'meeting', 'print']
+
+type MapPropRuntime = {
+  key: string
+  kind: PoiKind
+  activation: 'any' | 'all'
+  slotKeys: string[]
+  sprites: Phaser.GameObjects.Sprite[]
+  setState: (state: 'idle' | 'using') => void
+}
 
 /** `poi_lounge_0` → lounge; unknown kind ignored. */
 function parsePoiKind(name: string): PoiKind | null {
@@ -133,14 +161,23 @@ export class OfficeScene extends Phaser.Scene {
   private cell = CELL
   private spawns: Point[] = []
   private workstations: Workstation[] = []
-  /** Wander destinations from poi_* objects (lounge/coffee/meeting). */
+  /** Wander destinations from poi_* objects + causal tile props. */
   private pois: MapPoi[] = []
+  /** Causal appliances (printer…): claim key → runtime sprites. */
+  private mapProps = new Map<string, MapPropRuntime>()
+  /** Collide cells kept after createFromTiles removes animated stamps. */
+  private propCollideCells = new Set<string>()
+  /** Layer name → depth assigned in mountMap (for prop sprites). */
+  private layerDepthByName = new Map<string, number>()
   /** One desk per agent id; rebuilt on each spawnAgents. */
   private deskByAgentId = new Map<string, Workstation>()
   private sprites = new Map<string, Phaser.GameObjects.Sprite>()
   /** Soft foot shadow under each agent; destroyed with clearAgents. */
   private shadows = new Map<string, Phaser.GameObjects.Ellipse>()
   private runtimes = new Map<string, AgentRuntime>()
+  private footDebug = false
+  private footDebugGfx: Phaser.GameObjects.Graphics | null = null
+  private footDebugLabels: Phaser.GameObjects.Text[] = []
   private drag = false
   private dragLast = new Phaser.Math.Vector2()
   private _lastPlateAt = 0
@@ -184,6 +221,11 @@ export class OfficeScene extends Phaser.Scene {
 
     for (const ts of TILESET_ASSETS) {
       this.load.image(ts.key, ts.url)
+      // Same PNG as a spritesheet so causal props can play Tiled tile animations.
+      this.load.spritesheet(`${ts.key}__sheet`, ts.url, {
+        frameWidth: TILE,
+        frameHeight: TILE,
+      })
     }
     for (const entry of Object.values(MAP_REGISTRY)) {
       this.load.tilemapTiledJSON(entry.id, entry.json)
@@ -284,6 +326,7 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private destroyMapLayers() {
+    this.clearMapProps()
     for (const layer of this.mapLayers) layer.destroy()
     this.mapLayers = []
     if (this.tilemap) {
@@ -295,7 +338,16 @@ export class OfficeScene extends Phaser.Scene {
     this.spawns = []
     this.workstations = []
     this.pois = []
+    this.propCollideCells.clear()
+    this.layerDepthByName.clear()
     this.deskByAgentId.clear()
+  }
+
+  private clearMapProps() {
+    for (const prop of this.mapProps.values()) {
+      for (const s of prop.sprites) s.destroy()
+    }
+    this.mapProps.clear()
   }
 
   private clearAgents() {
@@ -380,6 +432,7 @@ export class OfficeScene extends Phaser.Scene {
     const tiledLayers = cached?.data?.layers ?? []
 
     let depth = 0
+    this.layerDepthByName.clear()
     for (const layerData of tiledLayers) {
       const name = layerData.name ?? ''
       if (
@@ -394,12 +447,15 @@ export class OfficeScene extends Phaser.Scene {
       if (!map.getLayer(name)) continue
       const layer = map.createLayer(name, tilesets, 0, 0)
       if (!layer) continue
-      layer.setDepth(depth++)
+      layer.setDepth(depth)
+      this.layerDepthByName.set(name, depth)
+      depth += 1
       this.mapLayers.push(layer)
     }
 
     this.exitZones = this.parseExitZones(map)
     this.parseObjects(map)
+    this.mountCausalProps(map)
     this.rebuildCollision(map)
 
     const worldW = this.mapW * this.cell
@@ -431,6 +487,7 @@ export class OfficeScene extends Phaser.Scene {
     const layers = ['walls', 'furniture', 'aboveFurniture', 'collisions'] as const
     this.collision = Array.from({ length: this.mapH }, (_, y) =>
       Array.from({ length: this.mapW }, (_, x) => {
+        if (this.propCollideCells.has(cellKey(x, y))) return true
         for (const name of layers) {
           if (!map.getLayer(name)) continue
           const tile = map.getTileAt(x, y, true, name)
@@ -498,6 +555,8 @@ export class OfficeScene extends Phaser.Scene {
       const pt: Point = { x: obj.x ?? 0, y: obj.y ?? 0 }
       const poiKind = parsePoiKind(name)
       if (poiKind) {
+        // Causal appliances come from tile poiKind stamps, not Points.
+        if (isCausalPoiKind(poiKind)) continue
         this.pois.push({
           key: name,
           point: pt,
@@ -534,6 +593,239 @@ export class OfficeScene extends Phaser.Scene {
 
     this.workstations = complete.length ? complete : spawnOnly
     this.spawns = this.workstations.map((w) => w.spawn)
+  }
+
+  /**
+   * Scan furniture / abovePlayer* for tile `poiKind`, cluster into appliances,
+   * turn animated stamps into sprites (idle until dwell), keep collide cells.
+   */
+  private mountCausalProps(map: Phaser.Tilemaps.Tilemap) {
+    this.clearMapProps()
+    this.propCollideCells.clear()
+
+    const cells = this.scanPropCells(map)
+    if (!cells.length) return
+
+    // Stand pads use tile collision (not foot hitbox) so counter-adjacent
+    // cells like coffee (2,9) still qualify when the cell itself is free.
+    this.rebuildCollision(map)
+    const clusters = buildPropClusters(cells, (tx, ty) =>
+      this.tileWalkable(tx, ty),
+    )
+
+    for (const cluster of clusters) {
+      for (const c of cluster.collideCells) {
+        this.propCollideCells.add(cellKey(c.tx, c.ty))
+      }
+      this.spawnPropRuntime(map, cluster)
+    }
+
+    // Re-build walkability after prop collide set is filled (stand already chosen).
+    this.rebuildCollision(map)
+  }
+
+  private scanPropCells(map: Phaser.Tilemaps.Tilemap): PropCell[] {
+    const cells: PropCell[] = []
+    for (const layerName of PROP_SCAN_LAYERS) {
+      if (!map.getLayer(layerName)) continue
+      for (let ty = 0; ty < map.height; ty++) {
+        for (let tx = 0; tx < map.width; tx++) {
+          const tile = map.getTileAt(tx, ty, true, layerName)
+          if (!tile || tile.index <= 0) continue
+          const tileset = tile.tileset
+          if (!tileset) continue
+          const props = tile.properties as
+            | {
+                poiKind?: unknown
+                collides?: unknown
+                standSides?: unknown
+                poiActivation?: unknown
+                standSeed?: unknown
+                poiStand?: unknown
+              }
+            | Array<{ name: string; value: unknown }>
+          const kind = parseTilePoiKind(props)
+          if (!kind) continue
+          const localId = tile.index - tileset.firstgid
+          const tileData = (
+            tileset as Phaser.Tilemaps.Tileset & {
+              tileData?: Record<number, { animation?: unknown }>
+            }
+          ).tileData?.[localId]
+          const hasAnimation = Array.isArray(tileData?.animation)
+            && (tileData.animation as unknown[]).length > 0
+          cells.push({
+            tx,
+            ty,
+            layerName,
+            gid: tile.index,
+            localId,
+            tilesetName: tileset.name,
+            kind,
+            collides: tilePropCollides(props),
+            hasAnimation,
+            overlay: isOverlayPropLayer(layerName),
+            standSides: parseStandSides(props),
+            activation: parsePropActivation(props),
+            standSeed: parseStandSeed(props),
+            poiStand: parsePoiStand(props),
+          })
+        }
+      }
+    }
+    return cells
+  }
+
+  private tilesetAssetKey(tilesetName: string): string | null {
+    return TILESET_ASSETS.find((t) => t.name === tilesetName)?.key ?? null
+  }
+
+  private ensurePropAnim(
+    tilesetName: string,
+    localId: number,
+    sheetKey: string,
+    map: Phaser.Tilemaps.Tilemap,
+  ): string | null {
+    const animKey = `prop-${tilesetName}-${localId}`
+    if (this.anims.exists(animKey)) return animKey
+    const tileset = map.getTileset(tilesetName)
+    if (!tileset) return null
+    const tileData = (
+      tileset as Phaser.Tilemaps.Tileset & {
+        tileData?: Record<
+          number,
+          { animation?: Array<{ tileid: number; duration: number }> }
+        >
+      }
+    ).tileData?.[localId]
+    const frames = tileData?.animation
+    if (!frames?.length) return null
+    this.anims.create({
+      key: animKey,
+      frames: frames.map((f) => ({
+        key: sheetKey,
+        frame: f.tileid,
+        duration: f.duration,
+      })),
+      repeat: -1,
+    })
+    return animKey
+  }
+
+  private spawnPropRuntime(map: Phaser.Tilemaps.Tilemap, cluster: PropCluster) {
+    if (!cluster.slots.length) return
+
+    const sprites: Phaser.GameObjects.Sprite[] = []
+    const animKeys: Array<string | null> = []
+    const animatedCells = cluster.cells.filter((c) => c.hasAnimation)
+
+    for (const c of animatedCells) {
+      const assetKey = this.tilesetAssetKey(c.tilesetName)
+      if (!assetKey) continue
+      const sheetKey = `${assetKey}__sheet`
+      if (!this.textures.exists(sheetKey)) continue
+
+      const animKey = this.ensurePropAnim(
+        c.tilesetName,
+        c.localId,
+        sheetKey,
+        map,
+      )
+      const worldX = c.tx * this.cell
+      const worldY = c.ty * this.cell
+      const sprite = this.add.sprite(worldX, worldY, sheetKey, c.localId)
+      sprite.setOrigin(0, 0)
+      const layerDepth =
+        this.layerDepthByName.get(c.layerName) ??
+        (c.overlay ? DEPTH_OVERLAY : c.ty * this.cell)
+      sprite.setDepth(layerDepth)
+      sprites.push(sprite)
+      animKeys.push(animKey)
+
+      // Remove stamp so Tiled ambient loop does not fight the sprite.
+      map.removeTileAt(c.tx, c.ty, true, true, c.layerName)
+    }
+
+    const setState = (state: 'idle' | 'using') => {
+      sprites.forEach((sprite, i) => {
+        const animKey = animKeys[i]
+        if (state === 'using' && animKey) {
+          sprite.play(animKey)
+          return
+        }
+        sprite.anims.stop()
+        const localId = animatedCells[i]?.localId
+        if (typeof localId === 'number') sprite.setFrame(localId)
+      })
+    }
+
+    setState('idle')
+
+    const standPois: MapPoi[] = []
+    for (const slot of cluster.slots) {
+      const point = footSafePointInCell(
+        slot.tx,
+        slot.ty,
+        (tx, ty) => this.tileWalkable(tx, ty),
+        this.cell,
+      )
+      if (!point) continue
+      standPois.push({
+        key: slotKeyFor(cluster.key, slot.id),
+        point,
+        kind: cluster.kind,
+        dwellFacing: slot.dwellFacing,
+      })
+    }
+    if (!standPois.length) {
+      for (const s of sprites) s.destroy()
+      return
+    }
+
+    this.mapProps.set(cluster.key, {
+      key: cluster.key,
+      kind: cluster.kind,
+      activation: cluster.activation,
+      slotKeys: standPois.map((p) => p.key),
+      sprites,
+      setState,
+    })
+    for (const poi of standPois) this.pois.push(poi)
+  }
+
+  /** True if another agent still claims a slot on this appliance (to/dwell). */
+  private applianceStillInUse(applianceKey: string, exceptId?: string): boolean {
+    for (const [id, rt] of this.runtimes) {
+      if (exceptId && id === exceptId) continue
+      if (!rt.poiClaimKey) continue
+      if (applianceKeyFromSlotKey(rt.poiClaimKey) !== applianceKey) continue
+      if (rt.mode !== 'wander') continue
+      if (rt.wanderPhase === 'to' || rt.wanderPhase === 'dwell') return true
+    }
+    return false
+  }
+
+  private setApplianceStateFromClaim(
+    claimKey: string | null,
+    state: 'idle' | 'using',
+    exceptId?: string,
+  ) {
+    if (!claimKey) return
+    const applianceKey = applianceKeyFromSlotKey(claimKey)
+    const prop = this.mapProps.get(applianceKey)
+    if (!prop) return
+    if (state === 'idle') {
+      if (this.applianceStillInUse(applianceKey, exceptId)) return
+      prop.setState('idle')
+      return
+    }
+    // `any`: one dweller is enough. `all` reserved for later group play.
+    if (prop.activation === 'all') {
+      // Period: treat like any until group recruitment exists.
+      prop.setState('using')
+      return
+    }
+    prop.setState('using')
   }
 
   /**
@@ -683,6 +975,10 @@ export class OfficeScene extends Phaser.Scene {
         goalX: spawn.x,
         goalY: spawn.y,
         path: [],
+        progressAt: this.time.now,
+        progressX: spawn.x,
+        progressY: spawn.y,
+        repathLeft: STUCK_REPATH_MAX,
         dir,
         faceDir: dir,
         fidgetUntil: this.time.now + scheduleFidgetMs(),
@@ -700,31 +996,25 @@ export class OfficeScene extends Phaser.Scene {
     })
   }
 
-  /** Cell under a world point is free (map bounds + collision grid). */
-  private cellWalkable(wx: number, wy: number): boolean {
-    const tx = Math.floor(wx / this.cell)
-    const ty = Math.floor(wy / this.cell)
+  /** Collision-grid only (no foot hitbox). Used for stand pads / tight POI cells. */
+  private tileWalkable(tx: number, ty: number): boolean {
     if (tx < 0 || ty < 0 || tx >= this.mapW || ty >= this.mapH) return false
     return !this.collision[ty]?.[tx]
   }
 
+  /** Cell under a world point is free (map bounds + collision grid). */
+  private cellWalkable(wx: number, wy: number): boolean {
+    const tx = Math.floor(wx / this.cell)
+    const ty = Math.floor(wy / this.cell)
+    return this.tileWalkable(tx, ty)
+  }
+
   /**
-   * Foot hitbox walkable check.
-   * Origin (0.5, 1): box is [x−BODY_W/2, y−BODY_H] → [x+BODY_W/2, y+BODY_SOUTH].
-   * Corners (+ center) must clear.
+   * Foot hitbox walkable check (see footHitbox.ts).
+   * Origin (0.5, 1): box is [x−W/2, y−H] → [x+W/2, y+SOUTH].
    */
   private walkableWorld(wx: number, wy: number): boolean {
-    const hw = BODY_W / 2
-    const top = wy - BODY_H
-    const bottom = wy + BODY_SOUTH
-    const samples: Point[] = [
-      { x: wx - hw, y: top },
-      { x: wx + hw, y: top },
-      { x: wx - hw, y: bottom },
-      { x: wx + hw, y: bottom },
-      { x: wx, y: (top + bottom) / 2 },
-    ]
-    return samples.every((p) => this.cellWalkable(p.x, p.y))
+    return footBoxClear(wx, wy, (tx, ty) => this.tileWalkable(tx, ty), this.cell)
   }
 
   /** Snap feet to nearest cell center where the foot hitbox fits (BFS). */
@@ -828,10 +1118,12 @@ export class OfficeScene extends Phaser.Scene {
     now: number,
   ) {
     const wasMeetingMember = this.meetingMemberIds.has(id)
+    const leavingClaim = rt.poiClaimKey
     rt.mode = 'working'
     rt.wanderPhase = 'none'
     rt.poiKind = null
     rt.poiClaimKey = null
+    this.setApplianceStateFromClaim(leavingClaim, 'idle', id)
     rt.fidget = 'none'
     rt.modeUntil = now + workingDurationMs()
     const desk = this.workstationFor(id)
@@ -989,6 +1281,10 @@ export class OfficeScene extends Phaser.Scene {
     const anim = `idle-${rt.persona.skin}-${rt.dir}`
     if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
 
+    if (rt.poiClaimKey) {
+      this.setApplianceStateFromClaim(rt.poiClaimKey, 'using')
+    }
+
     // Solo (and random): personal dwell clock.
     if (rt.poiKind !== 'meeting' || !this.meetingMemberIds.has(id)) {
       rt.modeUntil = now + dwellMs(rt.poiKind ?? 'random')
@@ -1022,9 +1318,14 @@ export class OfficeScene extends Phaser.Scene {
   /**
    * 8-dir BFS on collision grid → cell-center waypoints (excludes start cell).
    * Diagonal steps require both orthogonal neighbors walkable (no corner-cutting).
-   * Empty = no path. Walk anim stays 4-dir (Pipoya).
+   * Goal cell may use the exact destination if that point is foot-clear (stand pad nudge).
+   * `avoidWallHug`: skip middle nodes that touch collides (C-space lite / obstacle inflate).
    */
-  private findPath(from: Point, to: Point): Point[] {
+  private findPath(
+    from: Point,
+    to: Point,
+    opts?: { avoidWallHug?: boolean },
+  ): Point[] {
     const sx = Math.floor(from.x / this.cell)
     const sy = Math.floor(from.y / this.cell)
     const gx = Math.floor(to.x / this.cell)
@@ -1046,6 +1347,25 @@ export class OfficeScene extends Phaser.Scene {
       [-1, 1],
       [-1, -1],
     ]
+    const isBlocked = (tx: number, ty: number) => !this.tileWalkable(tx, ty)
+    const start = { tx: sx, ty: sy }
+    const goal = { tx: gx, ty: gy }
+
+    const nodeOk = (tx: number, ty: number) => {
+      if (tx === gx && ty === gy) {
+        return (
+          this.walkableWorld(to.x, to.y) || this.cellCenterWalkable(tx, ty)
+        )
+      }
+      if (!this.cellCenterWalkable(tx, ty)) return false
+      if (
+        opts?.avoidWallHug &&
+        isWallHugMiddleNode(tx, ty, start, goal, isBlocked)
+      ) {
+        return false
+      }
+      return true
+    }
 
     let found = false
     while (q.length) {
@@ -1059,10 +1379,12 @@ export class OfficeScene extends Phaser.Scene {
         const ny = ty + dy
         const key = cellKey(nx, ny)
         if (seen.has(key)) continue
-        if (!this.cellCenterWalkable(nx, ny)) continue
-        // Diagonal: both cardinal neighbors must be free (don't clip desk corners).
+        if (!nodeOk(nx, ny)) continue
         if (dx !== 0 && dy !== 0) {
-          if (!this.cellCenterWalkable(tx + dx, ty) || !this.cellCenterWalkable(tx, ty + dy)) {
+          if (
+            !this.cellCenterWalkable(tx + dx, ty) ||
+            !this.cellCenterWalkable(tx, ty + dy)
+          ) {
             continue
           }
         }
@@ -1084,12 +1406,14 @@ export class OfficeScene extends Phaser.Scene {
       cur = prev
     }
     cells.reverse()
-    return cells.map(({ tx, ty }) => ({
-      x: tx * this.cell + this.cell / 2,
-      y: ty * this.cell + this.cell / 2,
-    }))
+    return cells.map(({ tx, ty }) => {
+      if (tx === gx && ty === gy) return { x: to.x, y: to.y }
+      return {
+        x: tx * this.cell + this.cell / 2,
+        y: ty * this.cell + this.cell / 2,
+      }
+    })
   }
-
   /**
    * Set walk goal + BFS path. Extends modeUntil for long paths when requested.
    * On failure: stand still (path empty, goal = current).
@@ -1103,7 +1427,17 @@ export class OfficeScene extends Phaser.Scene {
     const goal = this.snapToWalkable(dest)
     rt.goalX = goal.x
     rt.goalY = goal.y
-    const path = this.findPath({ x: sprite.x, y: sprite.y }, goal)
+    rt.repathLeft = STUCK_REPATH_MAX
+    rt.progressAt = this.time.now
+    rt.progressX = sprite.x
+    rt.progressY = sprite.y
+    // Prefer inflated path (no wall-hug middles); fall back if aisle-only route.
+    let path = this.findPath({ x: sprite.x, y: sprite.y }, goal, {
+      avoidWallHug: true,
+    })
+    if (!path.length) {
+      path = this.findPath({ x: sprite.x, y: sprite.y }, goal)
+    }
     if (!path.length) {
       if (this.near(sprite.x, sprite.y, goal.x, goal.y, this.cell)) {
         rt.path = []
@@ -1157,10 +1491,92 @@ export class OfficeScene extends Phaser.Scene {
       }
       rt.targetX = rt.path[0].x
       rt.targetY = rt.path[0].y
+      rt.progressAt = this.time.now
+      rt.progressX = sprite.x
+      rt.progressY = sprite.y
     }
     this.stepToward(sprite, rt, delta)
+    this.maybeRepathIfStuck(sprite, rt)
   }
 
+  /**
+   * Concave corner slide lock (coffee counter): nudge off collides, then
+   * repath with wall-hug middle nodes banned so we don't get the same edge path.
+   */
+  private maybeRepathIfStuck(
+    sprite: Phaser.GameObjects.Sprite,
+    rt: AgentRuntime,
+  ) {
+    const now = this.time.now
+    const moved = Math.hypot(sprite.x - rt.progressX, sprite.y - rt.progressY)
+    if (moved >= STUCK_MOVE_EPS) {
+      rt.progressAt = now
+      rt.progressX = sprite.x
+      rt.progressY = sprite.y
+      return
+    }
+    if (rt.repathLeft <= 0) return
+    if (now - rt.progressAt < STUCK_REPATH_MS) return
+
+    rt.repathLeft -= 1
+    this.nudgeAwayFromCollides(sprite)
+    rt.progressAt = now
+    rt.progressX = sprite.x
+    rt.progressY = sprite.y
+    const goal = { x: rt.goalX, y: rt.goalY }
+    let path = this.findPath({ x: sprite.x, y: sprite.y }, goal, {
+      avoidWallHug: true,
+    })
+    // Fallback: open path without hug ban (last resorts still better than freeze).
+    if (!path.length) {
+      path = this.findPath({ x: sprite.x, y: sprite.y }, goal)
+    }
+    if (!path.length) return
+    rt.path = path
+    rt.targetX = path[0].x
+    rt.targetY = path[0].y
+  }
+
+  /** Push feet a few px away from collide tiles the foot box currently overlaps. */
+  private nudgeAwayFromCollides(sprite: Phaser.GameObjects.Sprite) {
+    const hw = FOOT_BODY_W / 2
+    const samples: Point[] = [
+      { x: sprite.x - hw, y: sprite.y - FOOT_BODY_H },
+      { x: sprite.x + hw, y: sprite.y - FOOT_BODY_H },
+      { x: sprite.x - hw, y: sprite.y + FOOT_BODY_SOUTH },
+      { x: sprite.x + hw, y: sprite.y + FOOT_BODY_SOUTH },
+      { x: sprite.x, y: sprite.y },
+    ]
+    let pushX = 0
+    let pushY = 0
+    for (const p of samples) {
+      const tx = Math.floor(p.x / this.cell)
+      const ty = Math.floor(p.y / this.cell)
+      if (this.tileWalkable(tx, ty)) continue
+      const cx = tx * this.cell + this.cell / 2
+      const cy = ty * this.cell + this.cell / 2
+      pushX += sprite.x - cx
+      pushY += sprite.y - cy
+    }
+    const len = Math.hypot(pushX, pushY)
+    if (len < 0.1) {
+      // Default: push east then south (away from typical west counter).
+      pushX = 1
+      pushY = 0.25
+    } else {
+      pushX /= len
+      pushY /= len
+    }
+    for (const dist of [4, 8, 12, 16]) {
+      const nx = sprite.x + pushX * dist
+      const ny = sprite.y + pushY * dist
+      if (this.walkableWorld(nx, ny)) {
+        sprite.x = nx
+        sprite.y = ny
+        return
+      }
+    }
+  }
   update(_time: number, delta: number) {
     if (this.assetsFailed || this.switching) return
     const now = this.time.now
@@ -1264,6 +1680,127 @@ export class OfficeScene extends Phaser.Scene {
       this._lastPlateAt = now
       this.callbacks.onNameplates(plates)
     }
+
+    this.drawFootDebug()
+  }
+
+  /** Toggle foot-hitbox / map-collision / POI stand markers (Toolbar「碰撞盒」). */
+  setFootDebug(on: boolean) {
+    this.footDebug = on
+    if (!on) {
+      if (this.footDebugGfx) {
+        this.footDebugGfx.destroy()
+        this.footDebugGfx = null
+      }
+      for (const t of this.footDebugLabels) t.destroy()
+      this.footDebugLabels = []
+    }
+  }
+
+  private clearFootDebugLabels() {
+    for (const t of this.footDebugLabels) t.destroy()
+    this.footDebugLabels = []
+  }
+
+  private drawFootDebug() {
+    if (!this.footDebug) return
+    if (!this.footDebugGfx || !this.footDebugGfx.active) {
+      this.footDebugGfx = this.add.graphics()
+      this.footDebugGfx.setDepth(DEPTH_OVERLAY + 10)
+    }
+    const g = this.footDebugGfx
+    g.clear()
+    this.clearFootDebugLabels()
+
+    // Full map collision grid (red).
+    g.fillStyle(0xff2244, 0.22)
+    g.lineStyle(1, 0xff2244, 0.55)
+    for (let ty = 0; ty < this.mapH; ty++) {
+      const row = this.collision[ty]
+      if (!row) continue
+      for (let tx = 0; tx < this.mapW; tx++) {
+        if (!row[tx]) continue
+        const x = tx * this.cell
+        const y = ty * this.cell
+        g.fillRect(x, y, this.cell, this.cell)
+        g.strokeRect(x, y, this.cell, this.cell)
+      }
+    }
+
+    // Causal stand pads: cyan crosshair at exact foot point.
+    // Point POIs (lounge/meeting): yellow diamond.
+    for (const poi of this.pois) {
+      const causal = poi.key.includes('#')
+      if (causal) {
+        this.drawCrosshair(g, poi.point.x, poi.point.y, 0x00e5ff)
+        const label = this.add
+          .text(poi.point.x + 6, poi.point.y - 10, poi.key.replace(/^poi_/, ''), {
+            fontSize: '9px',
+            color: '#00e5ff',
+            backgroundColor: '#000000aa',
+          })
+          .setDepth(DEPTH_OVERLAY + 11)
+        this.footDebugLabels.push(label)
+      } else {
+        this.drawDiamond(g, poi.point.x, poi.point.y, 0xffee55)
+      }
+    }
+
+    // Per-agent: foot AABB (green), feet origin (white crosshair), overlap (orange).
+    const hw = FOOT_BODY_W / 2
+    for (const [, sprite] of this.sprites) {
+      const x = sprite.x
+      const y = sprite.y
+      const left = x - hw
+      const top = y - FOOT_BODY_H
+      const w = FOOT_BODY_W
+      const h = FOOT_BODY_H + FOOT_BODY_SOUTH
+      g.lineStyle(1, 0x22ff88, 0.95)
+      g.strokeRect(left, top, w, h)
+      this.drawCrosshair(g, x, y, 0xffffff)
+
+      const t0 = Math.floor(left / this.cell)
+      const t1 = Math.floor((left + w - 0.01) / this.cell)
+      const u0 = Math.floor(top / this.cell)
+      const u1 = Math.floor((top + h - 0.01) / this.cell)
+      for (let ty = u0; ty <= u1; ty++) {
+        for (let tx = t0; tx <= t1; tx++) {
+          if (this.tileWalkable(tx, ty)) continue
+          g.fillStyle(0xffaa00, 0.35)
+          g.fillRect(tx * this.cell, ty * this.cell, this.cell, this.cell)
+          g.lineStyle(1, 0xffaa00, 0.9)
+          g.strokeRect(tx * this.cell, ty * this.cell, this.cell, this.cell)
+        }
+      }
+    }
+  }
+
+  private drawCrosshair(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    color: number,
+  ) {
+    g.lineStyle(1, color, 1)
+    g.strokeCircle(x, y, 5)
+    g.lineBetween(x - 8, y, x + 8, y)
+    g.lineBetween(x, y - 8, x, y + 8)
+  }
+
+  private drawDiamond(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    color: number,
+  ) {
+    g.lineStyle(1, color, 1)
+    g.beginPath()
+    g.moveTo(x, y - 6)
+    g.lineTo(x + 5, y)
+    g.lineTo(x, y + 6)
+    g.lineTo(x - 5, y)
+    g.closePath()
+    g.strokePath()
   }
 
   private exitAt(wx: number, wy: number): ExitZone | null {

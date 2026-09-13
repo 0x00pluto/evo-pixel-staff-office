@@ -20,4 +20,5 @@ export interface OfficeGameCallbacks {
 export interface OfficeGameHandle {
   destroy: () => void
   reloadAgents: (agents: AgentPersona[]) => void
+  setFootDebug: (on: boolean) => void
 }

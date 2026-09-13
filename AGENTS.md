@@ -22,9 +22,10 @@
 | `src/` | 前端、游戏、CLI、花名册映射 | 是 |
 | `bin/` | `pixel-office` CLI 入口 | 是 |
 | `scripts/` | 素材生成等脚本入口 | 是 |
-| `art/` | **作者工作区**：`maps/`（Tiled 工程）、`tilesets/<pack>/`（Piskel 条带 + manifest）；不进 `dist` / npx | 是 |
+| `art/` | **作者工作区**：`maps/`（Tiled 工程）、`tilesets/<pack>/raw/`（原始稿）+ `src/`（合成条带）+ manifest；不进 `dist` / npx | 是 |
 | `public/` | **运行时静态资源**：地图 JSON、tileset PNG、打好的图集；Vite 整份拷进 `dist` | 是 |
 | `docs/` | 技术文档 | 是 |
+| `docs/workflows/` | 业务可复跑流程（六段；新建只放这里，先复制 `_TEMPLATE.md`） | 是 |
 | `specs/` | 产品规格（PRD 等） | 是 |
 | `cache/` | 可重建缓存 | 否 |
 | `temp/` | 中间产物 | 否 |

@@ -5,7 +5,7 @@ export type AgentMode = 'idle' | 'wander' | 'working'
 /** Brief at-desk micro-motion while working (fake-alive). */
 export type FidgetKind = 'none' | 'glance' | 'step'
 
-export type PoiKind = 'lounge' | 'coffee' | 'meeting'
+export type PoiKind = 'lounge' | 'coffee' | 'meeting' | 'print'
 
 /** Wander trip: walking to POI → dwell → (then mode=working home). */
 export type WanderPhase = 'none' | 'to' | 'dwell'
@@ -23,6 +23,12 @@ export interface AgentRuntime {
   goalY: number
   /** Remaining grid waypoints (cell centers); empty = arrived at goal. */
   path: Array<{ x: number; y: number }>
+  /** Stuck-repath: last time feet moved meaningfully (Phaser time ms). */
+  progressAt: number
+  progressX: number
+  progressY: number
+  /** Repaths left for the current goal (reset in setWalkGoal). */
+  repathLeft: number
   dir: 0 | 1 | 2 | 3
   /** Stable desk facing (spawn → computer); fidget may temporarily change `dir`. */
   faceDir: 0 | 1 | 2 | 3
@@ -47,6 +53,7 @@ export interface AgentRuntime {
 export const SOLO_POI_KINDS: ReadonlyArray<Exclude<PoiKind, 'meeting'>> = [
   'lounge',
   'coffee',
+  'print',
 ]
 
 export type SoloPoiKind = (typeof SOLO_POI_KINDS)[number]
@@ -58,9 +65,20 @@ export type SoloPoiCandidate = {
   point: { x: number; y: number }
 }
 
+/** Shuffle solo kinds with Math.random (testable via stub). */
+export function shuffledSoloKinds(): SoloPoiKind[] {
+  const order = [...SOLO_POI_KINDS]
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[order[i], order[j]] = [order[j], order[i]]
+  }
+  return order
+}
+
 /**
- * Desk-clock wander: ~85% pick a free solo POI (lounge/coffee); full kind →
- * try the other; all busy → null (caller falls back to random). Never meeting.
+ * Desk-clock wander: ~85% pick a free solo POI (lounge/coffee/print); try
+ * shuffled kinds until one has a free chair; all busy → null (caller falls
+ * back to random). Never meeting.
  */
 export function pickSoloPoi(
   pois: SoloPoiCandidate[],
@@ -71,10 +89,7 @@ export function pickSoloPoi(
   const freeByKind = (kind: SoloPoiKind) =>
     pois.filter((p) => p.kind === kind && !busyKeys.has(p.key))
 
-  const order: SoloPoiKind[] =
-    Math.random() < 0.5 ? ['lounge', 'coffee'] : ['coffee', 'lounge']
-
-  for (const kind of order) {
+  for (const kind of shuffledSoloKinds()) {
     const free = freeByKind(kind)
     if (free.length) return free[Math.floor(Math.random() * free.length)]
   }
@@ -140,6 +155,7 @@ export function dwellMs(kind: WanderTargetKind): number {
     case 'lounge':
       return 3_000 + Math.random() * 5_000
     case 'coffee':
+    case 'print':
       return 2_000 + Math.random() * 3_000
     case 'meeting':
       return 4_000 + Math.random() * 6_000

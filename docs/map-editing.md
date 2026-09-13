@@ -72,7 +72,7 @@ flowchart TB
 | [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | 办公室瓦片；地板在 **tileset1.png**；碰撞标在 `*.tsj`；生成的 `art/tilesets/<pack>` 图集 |
 | [`public/assets/maps/tilesets/village/`](../public/assets/maps/tilesets/village/) | 园区瓦片（`pnpm import:wa-world`） |
 | [`art/maps/maps.tiled-project`](../art/maps/maps.tiled-project) | **Tiled 工程入口**（唯一；会话在 `art/maps/`，不进 npx） |
-| [`art/tilesets/`](../art/tilesets/) | 自制动画条带：一类一目录 + manifest（`pnpm pack:art-tilesets`） |
+| [`art/tilesets/`](../art/tilesets/) | 自制图集：一类一目录；`raw/` 原始稿 + `src/` 条带 + manifest（`pnpm pack:art-tilesets`） |
 | [`public/assets/maps/README.md`](../public/assets/maps/README.md) | 工作区一页纸 |
 | [`public/assets/CREDITS.md`](../public/assets/CREDITS.md) | 瓦片许可与署名 |
 
@@ -178,9 +178,11 @@ Jitsi / clock / website / audio 等 WA 功能层**不导入**。
 
 座位椅子（如 GID **340**）**不要**标 `collides`，否则站不上 spawn（`snapToWalkable` 会把人吸到过道）。
 
-### 3.1 摆闲逛 POI（休息 / 咖啡 / 会议）
+### 3.1 摆闲逛 POI（休息 / 会议 / 因果家具）
 
-闲逛目的地用 `poi_<kind>_<n>` Point，约定见 **[`docs/map-poi.md`](./map-poi.md)**（命名、可走格、Tiled 步骤、运行时语义）。到站脸朝哪用自定义属性 **`dwellFacing`**，见 **[`docs/map-facing.md`](./map-facing.md)**。与工位对象同层 `objects`，勿与 `spawn_*` / `computer_*` 混用同一数字语义。
+**座位类**（lounge / meeting）用 `poi_<kind>_<n>` Point，约定见 **[`docs/map-poi.md`](./map-poi.md)**。到站脸朝哪用 **`dwellFacing`**，见 **[`docs/map-facing.md`](./map-facing.md)**。与工位对象同层 `objects`。
+
+**因果家具**（打印机、咖啡机等，`CAUSAL_POI_KINDS`）：不要插 Point。标 `poiKind` / `collides` / 可选 `standSides`·`standSeed`·`poiStand`；站位垫见 [`map-poi.md`](./map-poi.md)「站位垫 stand pads」。同白名单再铺一台只需瓦片；改完 `.tsj` **只跑 `pnpm gen:assets`**。
 
 ### 4. 标碰撞（人走不过去）
 
@@ -292,29 +294,54 @@ pnpm sync:map-palette     # 从本机 WA maps/assets 再同步 tileset PNG
 pnpm import:wa-company    # 用 WA starter 重置 company-25（结束后会 pack）
 pnpm import:wa-world      # 重置 world-map + village tilesets
 pnpm pack:assets          # 仅组装 Pipoya characters.png
+pnpm crop:tiles extract … # 从 WA 图集只读抠格 → temp/crops/（禁止写回）
 pnpm dev:office           # 本地预览（推荐）
 pnpm dev                  # 本地预览（需自备 EVO_AGENT_CATALOG）
 ```
+
+### 从 WA 图集抠格（无原文件时）
+
+**执行清单**见 [`docs/workflows/crop-wa-tiles.md`](./workflows/crop-wa-tiles.md)（Agent / 复跑优先跟那篇）。
+
+`tileset*_export.png` 来自 WA 兄弟项目，**没有可改的源文件**。不要手改、也不要用脚本写回这些 PNG。做法是只读抠格 → 晋升 `raw/` → 编辑 → 条带进 `src/` → 打进**新** `art/tilesets/<pack>`：
+
+```bash
+# 例：打印机（tileset6 左上角 local id 50，横 3 × 竖 2 = 96×64）
+pnpm crop:tiles extract \
+  --from tileset6_export \
+  --x 0 --y 5 --w 3 --h 2 \
+  --out temp/crops/printer.png
+# 等价：--id 50 --w 3 --h 2
+```
+
+1. 在 Tiled 打开对应 `.tsj`，看 Properties 的 Rectangle / Tile → 得到格子 `(x,y)` 或 local id  
+2. `pnpm crop:tiles extract …` → `temp/crops/*.png`（gitignore；一次性刮板）  
+3. 拷进 `art/tilesets/<pack>/raw/`（入库原始稿）；Piskel / Aseprite 工程也放 `raw/`  
+4. 导出条带 PNG 到 `src/`（横=占格，竖=帧）→ `pnpm pack:art-tilesets` → Tiled 铺**新**图层  
+
+脚本**故意没有** stamp/写回；传 `stamp` / `apply` 会直接失败。
 
 ### 作者工作区 `art/` vs 运行时 `public/`
 
 | | `art/` | `public/` |
 |--|--------|-----------|
 | 谁用 | 人、Tiled 工程、Piskel、打包脚本 | 浏览器、Phaser、`pixel-office` / npx |
-| 例子 | `maps/` 工程、`tilesets/<pack>/` 条带 | 地图 JSON、tileset PNG、打好的 `<pack>.png` |
+| 例子 | `maps/` 工程、`tilesets/<pack>/raw/` + `src/` | 地图 JSON、tileset PNG、打好的 `<pack>.png` |
 | 进 `dist` | **否** | **是**（Vite 整份拷贝） |
 
 ```
 art/
   maps/maps.tiled-project     # 只开这一份工程
-  tilesets/office-anim/       # 动画类 → office-anim.png（已有 plant-pot）
+  tilesets/office-anim/       # 动画类 → office-anim.png
+    raw/                      # 原始稿（抠格、.piskel）；不进 pack
+    src/                      # 合成条带；plant-pot / printer / coffee-machine-big
   tilesets/couches/           # 沙发 couches → couches.png（静态家具示例）
   tilesets/couches-2/         # 过大人工拆第二包
 ```
 
 - **Tiled 工程**：只打开 [`art/maps/maps.tiled-project`](../art/maps/maps.tiled-project)。不要把 `*.tiled-project` / `*.tiled-session` 放进 `public/`。
 - **地图 JSON** 仍在 `public/assets/maps/`（源 = 运行时）；工程 `folders` 指向该目录。
-- **自制条带**：放 [`art/tilesets/<pack>/src/`](../art/tilesets/)（RGBA，宽高为 32 倍数；横=占格，竖=帧）→ `pnpm pack:art-tilesets` → `public/assets/maps/tilesets/<pack>.{png,tsj}`。目录名即 tileset 名。
+- **原始稿 vs 条带**：`raw/` 放 WA 抠格与 `.piskel`（入库、永不扫进 pack）；`src/` **只**放合成条带 PNG（RGBA，宽高为 32 倍数；横=占格，竖=帧）→ `pnpm pack:art-tilesets` → `public/assets/maps/tilesets/<pack>.{png,tsj}`。目录名即 tileset 名。
 - **紧贴 + 第 0 帧钉死**：新图紧贴占位。加帧优先脚下；空不够则**只溢出新帧**到别处（地图铺的第 0 帧 GID 不变）。整块搬家不做。
 - **终身占格**：条目占用过的格子不回收（缩帧/删源留洞）；别人不能占用。打满请建 `<pack>-2/`。
 - **加宽**：不要改原 PNG 宽度；新文件 append，地图改铺。

@@ -1,12 +1,12 @@
 {
   "columns": 16,
   "image": "office-anim.png",
-  "imageheight": 64,
+  "imageheight": 192,
   "imagewidth": 512,
   "margin": 0,
   "name": "office-anim",
   "spacing": 0,
-  "tilecount": 32,
+  "tilecount": 96,
   "tiledversion": "1.10.2",
   "tileheight": 32,
   "tiles": [
@@ -48,6 +48,197 @@
         }
       ],
       "id": 2
+    },
+    {
+      "animation": [
+        {
+          "duration": 250,
+          "tileid": 3
+        },
+        {
+          "duration": 250,
+          "tileid": 6
+        },
+        {
+          "duration": 250,
+          "tileid": 35
+        },
+        {
+          "duration": 250,
+          "tileid": 38
+        }
+      ],
+      "id": 3,
+      "properties": [
+        {
+          "name": "poiKind",
+          "type": "string",
+          "value": "print"
+        }
+      ]
+    },
+    {
+      "animation": [
+        {
+          "duration": 250,
+          "tileid": 4
+        },
+        {
+          "duration": 200,
+          "tileid": 7
+        },
+        {
+          "duration": 200,
+          "tileid": 36
+        },
+        {
+          "duration": 200,
+          "tileid": 39
+        },
+        {
+          "duration": 300,
+          "tileid": 68
+        }
+      ],
+      "id": 4,
+      "properties": [
+        {
+          "name": "poiKind",
+          "type": "string",
+          "value": "print"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "properties": [
+        {
+          "name": "poiKind",
+          "type": "string",
+          "value": "print"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "properties": [
+        {
+          "name": "poiKind",
+          "type": "string",
+          "value": "coffee"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "properties": [
+        {
+          "name": "poiKind",
+          "type": "string",
+          "value": "print"
+        }
+      ]
+    },
+    {
+      "animation": [
+        {
+          "duration": 250,
+          "tileid": 20
+        },
+        {
+          "duration": 200,
+          "tileid": 23
+        },
+        {
+          "duration": 200,
+          "tileid": 52
+        },
+        {
+          "duration": 200,
+          "tileid": 55
+        },
+        {
+          "duration": 300,
+          "tileid": 84
+        }
+      ],
+      "id": 20,
+      "properties": [
+        {
+          "name": "collides",
+          "type": "bool",
+          "value": true
+        },
+        {
+          "name": "poiKind",
+          "type": "string",
+          "value": "print"
+        },
+        {
+          "name": "standSides",
+          "type": "string",
+          "value": "left,right,down"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "properties": [
+        {
+          "name": "poiKind",
+          "type": "string",
+          "value": "print"
+        }
+      ]
+    },
+    {
+      "animation": [
+        {
+          "duration": 100,
+          "tileid": 25
+        },
+        {
+          "duration": 100,
+          "tileid": 26
+        },
+        {
+          "duration": 100,
+          "tileid": 27
+        },
+        {
+          "duration": 100,
+          "tileid": 28
+        },
+        {
+          "duration": 100,
+          "tileid": 57
+        },
+        {
+          "duration": 100,
+          "tileid": 58
+        },
+        {
+          "duration": 100,
+          "tileid": 59
+        },
+        {
+          "duration": 400,
+          "tileid": 60
+        }
+      ],
+      "id": 25,
+      "properties": [
+        {
+          "name": "poiKind",
+          "type": "string",
+          "value": "coffee"
+        },
+        {
+          "name": "standSides",
+          "type": "string",
+          "value": "right"
+        }
+      ]
     }
   ],
   "tilewidth": 32,

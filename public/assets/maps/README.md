@@ -35,7 +35,7 @@
 
 1. Tiled → Open `art/maps/maps.tiled-project`（或直接 `company-25.json`）
 2. 改碰撞：Tiled → `tilesets/*.tsj`
-3. 自制条带：丢进 `art/tilesets/<pack>/src/` → `pnpm pack:art-tilesets`（第 0 帧钉死、加帧可溢出；详见 `art/README.md`）
+3. 自制条带：原始稿 → `art/tilesets/<pack>/raw/`；导出条带 → `src/` → `pnpm pack:art-tilesets`（第 0 帧钉死、加帧可溢出；详见 `art/README.md`）
 4. 重置世界图：`pnpm import:wa-world`
 5. `pnpm gen:assets` → `pnpm dev:office` → 硬刷新
 

@@ -8,6 +8,7 @@
 |------|------------|------|
 | 工位（在岗） | 地图两个点 | `spawn_N` 看向同号 `computer_N`（程序 `faceToward`） |
 | lounge / coffee / meeting | 地图一个自定义属性 | 每个 `poi_*` 上的 **`dwellFacing`** |
+| print（因果瓦片连通块） | 程序 | 各 slot 脸朝机身（`faceToward`）；**不要**再插 Point |
 | random 闲逛（无 POI） | 程序默认 | 朝南 `down` |
 
 不要用 Tiled Point 的 **`rotation`**（常为 `0`，会被当成朝右）。不要根据家具瓦片 GID 猜朝向。

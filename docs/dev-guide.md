@@ -221,7 +221,7 @@ pnpm build
 
 ### 小人 FSM
 
-见 [`agentFsm.ts`](../src/game/agentFsm.ts)：**工作是默认**。出生为 `working`，剩余时长约 **1–45s 打散**（模拟已上了一会儿班），到期约 85% 续在岗（20–60s）、约 15% 外出。外出分两类（arity × place，见 [`map-poi.md`](./map-poi.md)）：**个人差事**（solo：工位时钟 → lounge/coffee/random，软占椅）与 **集体开会**（group：场景冷却拉 2–3 人分坐不同 `poi_meeting_*`；先到站等、**全员到齐后**共享 dwell 并同时散会；meeting **禁止**单人 desk wander）。solo 相位为 **走到 POI → dwell → 回家**（旅行中不因短时钟闪回）。过道不进入 `idle`。在岗时用单帧 `idle-{skin}-{dir}`，并做**假·活着**微动（偶发瞥视换朝向，或闪一下 walk 中间帧）；每人 `fidgetUntil` 独立，避免全员齐动。走路用碰撞格上的 **8 向 BFS** 折线航点绕桌椅（对角防穿角；动画仍四向 Pipoya；不必 A*）；撞墙不再取消目标。皮肤索引 `0…SKIN_COUNT-1`（`hash(id) % SKIN_COUNT`，见 [`skinCount.json`](../src/catalog/skinCount.json)，现 **64**），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。
+见 [`agentFsm.ts`](../src/game/agentFsm.ts)：**工作是默认**。出生为 `working`，剩余时长约 **1–45s 打散**（模拟已上了一会儿班），到期约 85% 续在岗（20–60s）、约 15% 外出。外出分两类（arity × place，见 [`map-poi.md`](./map-poi.md)）：**个人差事**（solo：工位时钟 → lounge/coffee/print/random，软占椅；print 来自瓦片 `poiKind` 连通块）与 **集体开会**（group：场景冷却拉 2–3 人分坐不同 `poi_meeting_*`；先到站等、**全员到齐后**共享 dwell 并同时散会；meeting **禁止**单人 desk wander）。solo 相位为 **走到 POI → dwell → 回家**（旅行中不因短时钟闪回）。过道不进入 `idle`。在岗时用单帧 `idle-{skin}-{dir}`，并做**假·活着**微动（偶发瞥视换朝向，或闪一下 walk 中间帧）；每人 `fidgetUntil` 独立，避免全员齐动。走路用碰撞格上的 **8 向 BFS** 折线航点绕桌椅（对角防穿角；动画仍四向 Pipoya；不必 A*）；撞墙不再取消目标。皮肤索引 `0…SKIN_COUNT-1`（`hash(id) % SKIN_COUNT`，见 [`skinCount.json`](../src/catalog/skinCount.json)，现 **64**），无 hue tint；`CHAR_SCALE≈1` 对齐 32px 格。
 
 工位：**人数 ≤ 桌数时按 `id` 排序一对一独占**；仅超额才 `hashPick` 复用。在岗稳定朝向 `faceDir` 由 `spawn → computer` 主轴决定（禁止写死向上；微动结束再对齐）。从世界图回办公室时**镜头**可落 `office-door`，**人**全体回各自工位。
 

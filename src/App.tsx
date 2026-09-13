@@ -26,6 +26,7 @@ export default function App() {
   const [assetsError, setAssetsError] = useState<string | null>(null)
   const [selected, setSelected] = useState<AgentPersona | null>(null)
   const [plates, setPlates] = useState<NameplateView[]>([])
+  const [footDebug, setFootDebug] = useState(false)
 
   const applyPayload = useCallback((payload: CatalogPayload) => {
     agentsRef.current = payload.agents
@@ -95,7 +96,15 @@ export default function App() {
         sourcePath={sourcePath}
         loading={loading}
         error={error}
+        footDebug={footDebug}
         onRefresh={() => void load(true)}
+        onToggleFootDebug={() => {
+          setFootDebug((prev) => {
+            const next = !prev
+            gameRef.current?.setFootDebug(next)
+            return next
+          })
+        }}
       />
       <div className="absolute inset-0 top-10">
         <div ref={hostRef} className="absolute inset-0" />

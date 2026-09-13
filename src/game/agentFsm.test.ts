@@ -42,8 +42,8 @@ const POIS: SoloPoiCandidate[] = [
 
 describe('pickSoloPoi', () => {
   it('never treats meeting as a personal errand', () => {
-    expect(SOLO_POI_KINDS).toEqual(['lounge', 'coffee'])
-    stubRandom(0, 0, 0)
+    expect(SOLO_POI_KINDS).toEqual(['lounge', 'coffee', 'print'])
+    stubRandom(0, 0, 0, 0, 0)
     expect(
       pickSoloPoi(
         [{ key: 'poi_meeting_0', kind: 'meeting', point: { x: 0, y: 0 } }],
@@ -57,8 +57,9 @@ describe('pickSoloPoi', () => {
     expect(pickSoloPoi(POIS, new Set())).toBeNull()
   })
 
-  it('skips busy keys and the other solo kind when the first is full', () => {
-    stubRandom(0, 0, 0)
+  it('skips busy keys and tries other solo kinds when the first is full', () => {
+    // shuffle: keep order lounge,coffee,print (randoms for swaps all 0)
+    stubRandom(0, 0, 0, 0, 0)
     const picked = pickSoloPoi(
       POIS,
       new Set(['poi_lounge_0', 'poi_lounge_1']),
@@ -67,12 +68,34 @@ describe('pickSoloPoi', () => {
     expect(picked?.key).toBe('poi_coffee_0')
   })
 
+  it('can pick print when lounge and coffee are busy', () => {
+    const withPrint: SoloPoiCandidate[] = [
+      ...POIS,
+      { key: 'poi_print_0', kind: 'print', point: { x: 5, y: 1 } },
+    ]
+    stubRandom(0, 0, 0, 0, 0)
+    const picked = pickSoloPoi(
+      withPrint,
+      new Set(['poi_lounge_0', 'poi_lounge_1', 'poi_coffee_0']),
+    )
+    expect(picked?.kind).toBe('print')
+    expect(picked?.key).toBe('poi_print_0')
+  })
+
   it('returns null when every solo chair is claimed', () => {
-    stubRandom(0, 0)
+    stubRandom(0, 0, 0, 0)
     expect(
       pickSoloPoi(
-        POIS,
-        new Set(['poi_lounge_0', 'poi_lounge_1', 'poi_coffee_0']),
+        [
+          ...POIS,
+          { key: 'poi_print_0', kind: 'print', point: { x: 5, y: 1 } },
+        ],
+        new Set([
+          'poi_lounge_0',
+          'poi_lounge_1',
+          'poi_coffee_0',
+          'poi_print_0',
+        ]),
       ),
     ).toBeNull()
   })
@@ -166,6 +189,7 @@ describe('timing helpers', () => {
     stubRandom(0)
     expect(dwellMs('lounge')).toBe(3_000)
     expect(dwellMs('coffee')).toBe(2_000)
+    expect(dwellMs('print')).toBe(2_000)
     expect(dwellMs('meeting')).toBe(4_000)
     expect(dwellMs('random')).toBe(1_000)
     stubRandom(0.5)

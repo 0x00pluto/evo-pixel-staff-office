@@ -7,10 +7,12 @@
 - `AGENTS.md`: 工作区约定、目录语义（含 `art/` 作者工作区 vs `public/` 运行时）、能力声明；本仓 MCP 项目名 `Users-peng.zhi-Documents-Object-huyuan-evo-agent-team`（**先 MCP 再 Grep**）；团队 Cursor 命令见 `.cursor/commands/team/`
 - `README.md`: 启动方式、技术栈、操作说明与数据约定；含 Tiled maps / `pack:assets` / `gen:assets` 校验
 - `docs/dev-guide.md`: 新人开发指南——架构、数据流、本地启动、游戏层约定、**代码检索顺序**；**对齐 WA 人物做法**（非 24 套数量）、脚底碰撞盒 24×24；Vitest 单测（`src/**/*.test.ts`，`pnpm test`）
-- `docs/map-editing.md`: 改图交接手册——心智模型（`floorLayer`）、任务菜谱、碰撞 / exit / objects、踩坑清单；**art/maps + art/tilesets**、`pack:art-tilesets` 多目录顺序锁定
-- `docs/map-poi.md`: 闲逛 POI 约定——arity×place（solo 差事软占 vs meeting 集体事件）；命名、摆点、Tiled 菜谱、运行时语义；单一事实源
+- `docs/map-editing.md`: 改图交接手册——心智模型（`floorLayer`）、任务菜谱、碰撞 / exit / objects、踩坑清单；**art/maps + art/tilesets**、`pack:art-tilesets` 多目录顺序锁定；WA 抠格执行清单见 `docs/workflows/crop-wa-tiles.md`
+- `docs/workflows/_TEMPLATE.md`: 业务 workflow 六段骨架；新建可复跑流程时复制并改名，写完后登记本索引
+- `docs/workflows/crop-wa-tiles.md`: 从 WA `tileset*_export` 只读抠格 → `temp/crops/`（`pnpm crop:tiles`）；禁止写回；晋升 `raw/` → 条带 `src/` → `pack:art-tilesets`
+- `docs/map-poi.md`: 闲逛 POI；因果连通块（`CAUSAL_POI_KINDS`：print/coffee）；**站位垫**三层与情况 A/B/C；改 `.tsj` 只跑 `pnpm gen:assets`
 - `docs/map-facing.md`: 朝向约定——工位 spawn→computer vs POI `dwellFacing`（up/down/left/right；漏标朝南）；不用 `direction`/`facing`
-- `art/`: 作者工作区——`maps/`（Tiled 工程）、`tilesets/<pack>/`（条带 + manifest）；不进 dist / npx
+- `art/`: 作者工作区——`maps/`（Tiled 工程）、`tilesets/<pack>/raw/`（原始稿）+ `src/`（合成条带）+ manifest；不进 dist / npx
 - `public/assets/CREDITS.md`: WA 风瓦片（CC-BY-SA 3.0）、Pipoya、缝合像素 Fusion Pixel（HUD 字体 OFL）署名；含 world-map 本地测试导入说明
 - `public/fonts/`: Fusion Pixel 12px proportional zh_hans（`src/index.css` `@font-face`）
 - `public/assets/maps/`: `company-25`（≤25）/ `world-map`（园区）；`tilesets/*.png` + **共享 `*.tsj`（collides）** + `tilesets/village/` + 生成的 `art/tilesets` 图集；交接见 `docs/map-editing.md`

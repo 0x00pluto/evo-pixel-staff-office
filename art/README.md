@@ -8,9 +8,11 @@ art/
     maps.tiled-project
   tilesets/             图集源：一类一目录 → 打成一份交货图集
     office-anim/        # 示例：会换帧的条带（植物等）
-      src/plant-pot.png
+      raw/              # 原始稿：WA 抠格、.piskel（不进合成）
+      src/              # 合成条带 PNG（横=占格，竖=帧）
       manifest.json
     couches/            # 示例：沙发 couches（静态家具）
+      raw/
       src/
       manifest.json
 ```
@@ -26,12 +28,14 @@ art/
 |------|------|
 | [`maps/maps.tiled-project`](./maps/maps.tiled-project) | **唯一** Tiled 工程入口（`folders` → `../../public/assets/maps`） |
 | `maps/maps.tiled-session` | 本机会话（gitignore） |
-| [`tilesets/<pack>/`](./tilesets/) | 自制条带 + append-only manifest；**目录名 = 输出 tileset 名** |
+| [`tilesets/<pack>/raw/`](./tilesets/) | **原始稿**（抠格 PNG、`.piskel`）；入库；**永不**扫进 pack |
+| [`tilesets/<pack>/src/`](./tilesets/) | **合成条带**（仅顶层 `*.png`）；打包器只读这里 |
+| [`tilesets/<pack>/`](./tilesets/) | append-only `manifest.json`；**目录名 = 输出 tileset 名** |
 
 ## 图集打包（多目录）
 
 1. 在 `art/tilesets/` 下新建目录，例如 `couches/`（与 `office-anim` 同级）
-2. 放入 `src/*.png`（RGBA，宽高为 32 倍数；横=占格，竖=帧）+ `manifest.json`（可复制 `office-anim` 的模板）
+2. 原始稿放 `raw/`；导出条带放 `src/*.png`（RGBA，宽高为 32 倍数；横=占格，竖=帧）+ `manifest.json`（可复制 `office-anim` 的模板）
 3. `pnpm pack:art-tilesets`（或 `pnpm gen:assets`）
 4. 交货：`public/assets/maps/tilesets/<pack>.{png,tsj}`
 5. 进地图：Tiled unpack → Add External → 铺瓦片保存 → `pnpm gen:assets`（会 **自动同步** Phaser 预加载列表）
@@ -39,6 +43,8 @@ art/
 
 ### 规则
 
+- **`raw/` 不进合成**：WA 抠格、Piskel 工程只放 `raw/`；**不要**把原抠格丢进 `src/`（打包器会当成新条带 append）。
+- **`src/` 只放条带**：仅顶层 `*.png`；`.piskel` / 子目录放错会警告。
 - **一类一目录**；沙发、植物、灯不要混进同一个 pack（心智清晰；常改帧的与几乎定稿的可分开）。
 - **紧贴打包**：新条带按空位紧贴放置；不预留空行。
 - **第 0 帧钉死**：地图铺的是第 0 帧格子；加帧时优先往脚下长，脚下被占则**只把多出的帧**塞到别处，**不搬家第 0 帧**，桌上已铺物件不用重刷。
@@ -47,6 +53,6 @@ art/
 - **硬顶 2048**：宽高均 ≤2048px（`maxAtlasHeightPx` 默认即上限；`columns×32` 同限）。超限请新建 `art/tilesets/<name>-2/`，不要改已锁定的 `columns`。
 - **顺序锁定**：`manifest.entries` 只追加；`frames[]` / `owned[]` 记录帧位置与终身占用。
 - **`.tsj` 合并保留**：`pnpm pack:art-tilesets` 会更新 PNG 与几何字段，但**保留**已有 `tiles[]`（含你在 Tiled 绑的 animation / properties）。新条带要自己在 Tiled 再绑 playlist；`defaultDurationMs` 仅作作者备忘。
-- 打包器**只扫** `art/tilesets/*/manifest.json`，不会碰到 `art/maps/`。
+- 打包器**只扫** `art/tilesets/*/manifest.json` + 对应 `src/*.png`，不会碰到 `raw/` 或 `art/maps/`。
 
 详见 [`docs/map-editing.md`](../docs/map-editing.md)「作者工作区」。
