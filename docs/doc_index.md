@@ -4,8 +4,8 @@
 
 ## Index
 
-- `AGENTS.md`: 工作区约定、目录语义（含 `art/` 作者工作区 vs `public/` 运行时）、能力声明（含运行时花名册 POST + 用户目录持久化、出勤窄例外、公开发布 `@huyuan/pixel-office` + 25×25 世界桩图）；本仓 MCP 项目名 `Users-peng.zhi-Documents-Object-huyuan-evo-agent-team`（**先 MCP 再 Grep**）；团队 Cursor 命令见 `.cursor/commands/team/`
-- `README.md`: 首要 `npx @huyuan/pixel-office`；开发路径次之；运行时花名册 / 出勤 curl 验收与数据约定；OpenAPI 见 `docs/openapi.md`；含 Tiled maps / `pack:assets` / `gen:assets` / `gen:world-stub` / 发版门禁
+- `AGENTS.md`: 工作区约定、目录语义（含 `art/` 作者工作区 vs `public/` 运行时）、能力声明（含运行时花名册 POST + 用户目录持久化、出勤窄例外、公开发布 `@huyuan-ai/pixel-office` + 25×25 世界桩图）；本仓 MCP 项目名 `Users-peng.zhi-Documents-Object-huyuan-evo-agent-team`（**先 MCP 再 Grep**）；团队 Cursor 命令见 `.cursor/commands/team/`
+- `README.md`: 首要 `npx @huyuan-ai/pixel-office`；开发路径次之；运行时花名册 / 出勤 curl 验收与数据约定；OpenAPI 见 `docs/openapi.md`；含 Tiled maps / `pack:assets` / `gen:assets` / `gen:world-stub` / 发版门禁
 - `docs/dev-guide.md`: 新人开发指南——架构、数据流（RuntimeCatalog + presence + openapi）、本地启动、游戏层约定、**代码检索顺序**；**对齐 WA 人物做法**（非 24 套数量）、脚底碰撞盒 24×24；Vitest 单测（`src/**/*.test.ts`，`pnpm test`）
 - `docs/openapi.md`: OpenAPI 3.1 JSON 合同用法——`GET /api/openapi.json`（无 Swagger UI）；Agent 调法（先 POST catalog 再 presence）；`pnpm gen:openapi` 防漂移；字段以 JSON 为准
 - `docs/map-editing.md`: 改图交接手册——心智模型（`floorLayer`）、任务菜谱、碰撞 / exit / objects、踩坑清单；**art/maps + art/tilesets**、`pack:art-tilesets` 多目录顺序锁定；世界图为 25×25 色块桩图；WA 抠格执行清单见 `docs/workflows/crop-wa-tiles.md`
@@ -30,5 +30,5 @@
 - `specs/prds/prd-00006-meaningful-wander-events.md`: 有意义闲逛——solo 差事软占 + meeting 集体事件（arity×place）；工程 accepted（R0）
 - `specs/prds/prd-00007-live-presence.md`: 实时出勤——完工必 blocked；大屏点击已读灭黄；working 600s / blocked 3600s TTL；工牌/活锁/稀疏气泡；工程 backlog
 - `specs/prds/prd-00008-runtime-catalog.md`: 运行时花名册——无本地 JSON 可启动；`POST /api/catalog` + 用户目录持久化；顶栏选文件；工程 accepted（R0）
-- `specs/prds/prd-00009-npx-publish.md`: 公开发布 `@huyuan/pixel-office`；R0 预构建 + pack 门禁；世界图为 25×25 色块桩图（相对初稿「不含 world-map」的工程取舍见验收章）
+- `specs/prds/prd-00009-npx-publish.md`: 公开发布 `@huyuan-ai/pixel-office`；R0 预构建 + pack 门禁；世界图为 25×25 色块桩图（相对初稿「不含 world-map」的工程取舍见验收章）
 - `.cursor/commands/team/`: Vibecoding 团队命令（产品 / 验收 / 游戏前端 / 测试 / 自主交付）；母版维护于 Obsidian Vibecoding 库

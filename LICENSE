@@ -20,7 +20,7 @@ Unless noted otherwise, original TypeScript / JavaScript / documentation authore
 
 See also [`public/assets/CREDITS.md`](public/assets/CREDITS.md).
 
-## npm package `@huyuan/pixel-office`
+## npm package `@huyuan-ai/pixel-office`
 
 The published tarball contains a prebuilt SPA (`dist/`), CLI entrypoints, and the allowlisted assets above.
 It **does not** contain the wa-village headquarters map or the bulk of `tilesets/village/`.

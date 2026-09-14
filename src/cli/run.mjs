@@ -34,8 +34,8 @@ function printHelp() {
   console.log(`pixel-office — 像素数字员工办公室大屏
 
 用法:
-  npx @huyuan/pixel-office
-  npx @huyuan/pixel-office --catalog <CATALOG.json路径>
+  npx @huyuan-ai/pixel-office
+  npx @huyuan-ai/pixel-office --catalog <CATALOG.json路径>
   pnpm pixel-office -c ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 选项:
@@ -97,7 +97,7 @@ async function main() {
       )
     } else {
       console.error(
-        `[pixel-office] 未找到构建产物 ${distDir}/index.html\n包可能损坏或非官方安装；请重新执行: npx @huyuan/pixel-office`,
+        `[pixel-office] 未找到构建产物 ${distDir}/index.html\n包可能损坏或非官方安装；请重新执行: npx @huyuan-ai/pixel-office`,
       )
     }
     process.exit(1)

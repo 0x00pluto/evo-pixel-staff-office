@@ -1,15 +1,15 @@
-# 像素员工办公室（@huyuan/pixel-office）
+# 像素员工办公室（@huyuan-ai/pixel-office）
 
 把 AgentWikiIndex 的 `CATALOG.json` 花名册渲染成像素风办公室大屏：每个 workspace 是一个会走路的小人，头顶显示名字与状态，点击查看 owns / blurb / siblings。
 
-仓库目录名仍为 `evo-agent-team`；公开发布包名为 **`@huyuan/pixel-office`**。
+仓库目录名仍为 `evo-agent-team`；公开发布包名为 **`@huyuan-ai/pixel-office`**。
 
 ## 一条命令起大屏（推荐）
 
 需 Node ≥ 20：
 
 ```bash
-npx @huyuan/pixel-office
+npx @huyuan-ai/pixel-office
 ```
 
 浏览器会打开本地 origin（默认端口 **3780**）。无本地花名册时空办公室；再用顶栏「选择花名册」或 `POST /api/catalog` 注入。
@@ -99,7 +99,7 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 ```bash
 pnpm publish:check   # test + build + npm pack 门禁
-npm publish --access public   # 需 npm 登录且有 @huyuan 权限
+npm publish --access public   # 需 npm 登录且有 @huyuan-ai 权限
 ```
 
 门禁硬条件：tarball 有 `dist/index.html`；无 `art/`；`village` 路径仅允许上述两 PNG。

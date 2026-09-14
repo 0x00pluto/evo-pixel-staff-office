@@ -32,7 +32,7 @@
 
 - 把 AgentWikiIndex 的 `CATALOG.json` 花名册渲染成像素风办公室大屏
 - 每个 `workspace` 一个会走路的小人，显示名字与状态，点击查看详情
-- 本地一键预览（`pixel-office` CLI）与公开发布 `npx @huyuan/pixel-office`
+- 本地一键预览（`pixel-office` CLI）与公开发布 `npx @huyuan-ai/pixel-office`
 
 **不做（见 AGENTS.md `not`）：**
 
@@ -115,7 +115,7 @@ flowchart LR
 |---|---|---|
 | 开发 | `pnpm dev` → Vite + [`catalogApiPlugin`](../src/cli/vite-plugin-catalog.ts) | `http://localhost:5173` |
 | 一键预览 | `pnpm build` 后 `pnpm pixel-office` 托管 `dist/` | `http://localhost:3780` |
-| 公开发布 | `npx @huyuan/pixel-office`（预构建 dist） | `http://localhost:3780` |
+| 公开发布 | `npx @huyuan-ai/pixel-office`（预构建 dist） | `http://localhost:3780` |
 
 ### 运行时花名册（PRD-00008）
 

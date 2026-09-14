@@ -1,7 +1,7 @@
 ---
 name: prd-00009-npx-publish
 sequence: 9
-description: 公开发布 npm 包 @huyuan/pixel-office；npx 一条命令起大屏；R0 含办公室 + 25×25 世界桩图
+description: 公开发布 npm 包 @huyuan-ai/pixel-office；npx 一条命令起大屏；R0 含办公室 + 25×25 世界桩图
 status: accepted
 created: 2026-09-14T07:58:34Z
 last_accepted_at: 2026-09-14T08:29:27Z
@@ -15,7 +15,7 @@ accepted_branch: main
 | 属性   | 值 |
 | ---- | --- |
 | 状态   | 工程：accepted（R0；见文末「工程验收状态」） |
-| 范围   | 把本仓可运行的像素办公室以公开 npm 包分发；用户 `npx @huyuan/pixel-office` 无需 clone / `pnpm install` / 先 `pnpm build`。R0 tarball 含办公室（`company-25`）+ **25×25 色块世界桩图**；**不含** wa-village 园区大图；village 仅办公室用到的两 PNG。不改花名册 schema、出勤语义、不上 SQLite。 |
+| 范围   | 把本仓可运行的像素办公室以公开 npm 包分发；用户 `npx @huyuan-ai/pixel-office` 无需 clone / `pnpm install` / 先 `pnpm build`。R0 tarball 含办公室（`company-25`）+ **25×25 色块世界桩图**；**不含** wa-village 园区大图；village 仅办公室用到的两 PNG。不改花名册 schema、出勤语义、不上 SQLite。 |
 | 关联文档 | `AGENTS.md`、`README.md`、`docs/dev-guide.md`、`docs/openapi.md`、`public/assets/CREDITS.md`、`package.json`、`bin/pixel-office.mjs`、`src/cli/run.mjs`、`specs/prds/prd-00007-live-presence.md`、`specs/prds/prd-00008-runtime-catalog.md` |
 
 
@@ -35,8 +35,8 @@ accepted_branch: main
 
 ### 目标（MVP / Release 0）
 
-- **公开 scoped 包。** npmjs.com 上发布 `@huyuan/pixel-office`（`publishConfig.access=public`）；bin 名仍为 `pixel-office`。
-- **一条命令起服。** 干净机器：`npx @huyuan/pixel-office` → 打开浏览器本地 origin（默认端口与现 CLI 一致 `3780`，可 `-p`）；无本地 `CATALOG.json` 时空办公室（对齐 PRD 00008）。
+- **公开 scoped 包。** npmjs.com 上发布 `@huyuan-ai/pixel-office`（`publishConfig.access=public`）；bin 名仍为 `pixel-office`。
+- **一条命令起服。** 干净机器：`npx @huyuan-ai/pixel-office` → 打开浏览器本地 origin（默认端口与现 CLI 一致 `3780`，可 `-p`）；无本地 `CATALOG.json` 时空办公室（对齐 PRD 00008）。
 - **预构建进 tarball。** 包内含 `bin/`、运行 CLI 所需的 `src/cli/*.mjs`、**office-only** `dist/`；用户 **不必** 在目标机执行 Vite build。
 - **瘦运行时依赖。** npx 安装只需 CLI 运行时依赖（当前实质为 `open`）；Phaser / React 打进 `dist`，从 `dependencies` 挪到 `devDependencies`（本地 `pnpm dev` 不变）。
 - **世界图不进 npm。** R0 publish 构建排除 `world-map` 与 `tilesets/village/`；点大门不静默 404——提示「本发行版仅含办公室」或隐藏出口（构建期 `PIXEL_OFFICE_EDITION=office`）。
@@ -66,7 +66,7 @@ accepted_branch: main
 
 | 术语 | 含义 |
 | ---- | ---- |
-| 包名 / package name | npm `name` 字段：`@huyuan/pixel-office` |
+| 包名 / package name | npm `name` 字段：`@huyuan-ai/pixel-office` |
 | bin | CLI 可执行名：`pixel-office`（`npx` 解析到该 bin） |
 | tarball | `npm pack` / publish 上传的包内容 |
 | office-only 构建 | 发布用 Vite/静态产物，仅办公室地图与所需瓦片，无 village |
@@ -82,8 +82,8 @@ accepted_branch: main
 | 议题 | 决议 | 说明 |
 | ---- | ---- | ---- |
 | 渠道 | **npmjs.com 公开** | scoped 须 `access=public` |
-| 包名 | **`@huyuan/pixel-office`** | 仓库名仍 `evo-agent-team`；若组织名不同实现前改 scope |
-| 用户命令 | **`npx @huyuan/pixel-office`** | R0 只宣传 npx；`npm i -g` 出现 `pixel-office` 算同能力 |
+| 包名 | **`@huyuan-ai/pixel-office`** | 仓库名仍 `evo-agent-team`；若组织名不同实现前改 scope |
+| 用户命令 | **`npx @huyuan-ai/pixel-office`** | R0 只宣传 npx；`npm i -g` 出现 `pixel-office` 算同能力 |
 | R0 地图 | **仅办公室** | 无 world-map / village；体积与许可优先 |
 | 无园区交互 | **明确提示或隐藏出口** | 禁止静默 404 死机 |
 | 包内容 | **预构建 + CLI** | 含 `bin/`、`src/cli` 运行所需、office-only `dist/`；不含 `art/`、游戏 TS 源、`scripts/`、测试 |
@@ -111,7 +111,7 @@ accepted_branch: main
 
 ### 1. 包身份与元数据
 
-- `name`: `@huyuan/pixel-office`；去掉 `private: true`（或 publish 流程显式覆盖）。
+- `name`: `@huyuan-ai/pixel-office`；去掉 `private: true`（或 publish 流程显式覆盖）。
 - `bin.pixel-office` 指向包内入口（现 `./bin/pixel-office.mjs` 语义保留）。
 - `files`（或 `.npmignore`）白名单：只放可运行所需路径；**显式排除** `art/`、`specs/`、`docs/`（除进 dist 的 CREDITS）、测试、village。
 - `publishConfig.access`: `public`；`engines.node`: `>=20`。
@@ -135,11 +135,11 @@ accepted_branch: main
 2. office-only 构建。  
 3. `npm pack --dry-run`（或脚本）断言：含 `dist/index.html`；不含 `art/`、不含 `village`；体积上限由实现定但须**显著小于**当前 ~71MB 全量 dist（建议验收写「无 village 路径」为硬条件，体积为软目标）。  
 4. `npm publish --access public`。  
-5. 干净环境 `npx @huyuan/pixel-office` 冒烟：空办公室 + `GET /api/openapi.json` 200。
+5. 干净环境 `npx @huyuan-ai/pixel-office` 冒烟：空办公室 + `GET /api/openapi.json` 200。
 
 ### 5. 文档与能力声明（实现阶段）
 
-- README 首屏：`npx @huyuan/pixel-office`；开发路径次之。
+- README 首屏：`npx @huyuan-ai/pixel-office`；开发路径次之。
 - `AGENTS.md`：`owns` 增加公开发布；`not` 删除「发布 npm registry」；仍保留不上 SQLite 等。
 - CREDITS / LICENSE 与包内容一致（无村图则不暗示含园区）。
 
@@ -154,7 +154,7 @@ accepted_branch: main
 | 1 | 维护者 | Entry：版本就绪、npm 登录有效 | 跑 test + office-only build |
 | 2 | 维护者 | `npm pack --dry-run` 门禁 | 通过 → 可 publish；失败 → 中止（回 localUnpublished） |
 | 3 | 维护者 | `npm publish --access public` | 包在 npmjs 可见（`publishedPublic`） |
-| 4 | 老板 | Entry：本机有 Node ≥20 | `npx @huyuan/pixel-office` |
+| 4 | 老板 | Entry：本机有 Node ≥20 | `npx @huyuan-ai/pixel-office` |
 | 5 | 系统 | 解压/缓存包，起 HTTP | 浏览器打开本地 origin；办公室可渲染 |
 | 6 | 老板 / Agent | 选文件或 `POST /api/catalog` | 花名册进内存 + 用户目录；小人出现 |
 | 7 | 老板 | 可选：大门 / 园区 | 发行版提示仅办公室或无出口；**不**崩溃 |
@@ -166,7 +166,7 @@ accepted_branch: main
 
 | 阶段 | 目标 | 故事 | 验收要点 |
 | ---- | ---- | ---- | -------- |
-| 发现与启动 | 零配置起大屏 | 作为老板，我想要 `npx @huyuan/pixel-office`，以便不 clone 仓库也能看办公室 | 干净机（无本仓、无预装依赖）一条命令起服；浏览器打开；空态办公室可渲染 |
+| 发现与启动 | 零配置起大屏 | 作为老板，我想要 `npx @huyuan-ai/pixel-office`，以便不 clone 仓库也能看办公室 | 干净机（无本仓、无预装依赖）一条命令起服；浏览器打开；空态办公室可渲染 |
 | 发现与启动 | 可选参数仍可用 | 作为运维，我想要 `-p` / `--no-open` / `--catalog`，以便嵌入脚本 | 与现 CLI 帮助一致；无 catalog 不退出 |
 | 花名册 | 运行时注入 | 作为 Agent，我想要 POST 花名册，以便大屏显示团队 | `POST /api/catalog` 成功后 `GET` 可见；写入 `~/.pixel-office/catalog.json`（PRD 00008） |
 | 花名册 | 界面选文件 | 作为老板，我想要顶栏选 JSON，以便不用 curl | 选文件与 POST 同效果 |
@@ -181,13 +181,13 @@ accepted_branch: main
 
 #### Release 0（MVP，必选）
 
-- 包身份：`@huyuan/pixel-office` 公开；`bin` = `pixel-office`。
+- 包身份：`@huyuan-ai/pixel-office` 公开；`bin` = `pixel-office`。
 - office-only 预构建进 tarball；瘦 `dependencies`。
 - 人手发版流程 + pack 门禁。
 - 发行版无园区的安全降级（提示或隐藏出口）。
 - LICENSE + CREDITS 一致；`engines.node >= 20`。
 - README / AGENTS 文档同步（实现阶段）。
-- **可验收结果：** 干净机 `npx @huyuan/pixel-office` 起空办公室；可注入花名册；tarball 无 village/art。
+- **可验收结果：** 干净机 `npx @huyuan-ai/pixel-office` 起空办公室；可注入花名册；tarball 无 village/art。
 
 #### Release 1（可选，同 PRD）
 
@@ -208,7 +208,7 @@ flowchart TD
   pack -->|fail| stop[abort_publish]
   pack -->|pass| publish["npm_publish_access_public"]
   publish --> registry[npmjs_public]
-  registry --> user["npx_@huyuan/pixel-office"]
+  registry --> user["npx_@huyuan-ai/pixel-office"]
   user --> boot[CLI_serves_dist_catalog_presence]
   boot --> empty[empty_office]
   empty --> inject["POST_catalog_or_pick_file"]
@@ -242,20 +242,20 @@ stateDiagram-v2
 
 ## 成功标准（可度量）
 
-- 干净环境（无本仓 clone）执行 `npx @huyuan/pixel-office`：**进程不因缺 dist / 缺 CATALOG 退出**；办公室地图可渲染。
+- 干净环境（无本仓 clone）执行 `npx @huyuan-ai/pixel-office`：**进程不因缺 dist / 缺 CATALOG 退出**；办公室地图可渲染。
 - `npm pack --dry-run`：**0** 条 `art/`、**0** 条 `village` 路径；存在 `dist/index.html`。
 - 注入合法花名册后 agents 数与源 JSON `workspaces` 映射一致（复用现映射）。
-- 文档：README 首要命令为 `npx @huyuan/pixel-office`；`AGENTS.md` 不再把「发布 npm」列为 not。
+- 文档：README 首要命令为 `npx @huyuan-ai/pixel-office`；`AGENTS.md` 不再把「发布 npm」列为 not。
 
 
 ## 假设与待确认 / 开放项
 
 | ID | 项 | 默认假设 | 需谁确认 |
 | -- | -- | -------- | -------- |
-| O1 | npm scope `@huyuan` 组织已存在且账号有 publish 权限 | 是；否则改 scope 再发 | 维护者 |
+| O1 | npm scope `@huyuan-ai` 组织已存在且账号有 publish 权限 | 是（登录账号 `huyuan-ai`）；初稿曾写 `@huyuan`，实现改为 `@huyuan-ai` | 维护者 |
 | O2 | 发布账号已开 2FA / 自动化 token 策略 | R0 用人手交互登录即可 | 维护者 |
 | O3 | LICENSE 文案法务可接受（混合素材分述） | 首发前合并 LICENSE 文件 | 维护者 / 法务 |
-| O4 | 包名是否占用 | 发版前 `npm view @huyuan/pixel-office` | 维护者 |
+| O4 | 包名是否占用 | 发版前 `npm view @huyuan-ai/pixel-office` | 维护者 |
 | O5 | office-only 体积软上限具体数字 | 以「无 village」为硬门禁；数字实现时定 | 工程 |
 | O6 | npm provenance | 不做 R0 | 开放 |
 | O7 | 世界图许可清掉后是否并回本 PRD R1 | 倾向独立 PRD | 产品 |
@@ -267,6 +267,7 @@ stateDiagram-v2
 | ---- | ---- |
 | 2026-09-14 | 初稿：公开 `@huyuan/pixel-office`；R0 office-only；人手发版；世界图不进包 |
 | 2026-09-14 | R0 工程验收通过（人工）；世界图改为 25×25 桩图；见文末「工程验收状态」 |
+| 2026-09-14 | 包 scope 改为 `@huyuan-ai/pixel-office`（账号 `huyuan-ai`；`@huyuan` publish 404） |
 
 
 ## 1. 工程验收状态
@@ -281,7 +282,7 @@ stateDiagram-v2
 | 验收判定 | 通过（R0；人工） |
 | 最近验收 | 2026-09-14；维护者本地 `pnpm build` + `pixel-office -p 3792`（大门↔白格切图）+ `pnpm pack:gate` ≈2.70 MiB |
 | 代码提交 | 实现尚在工作树；落点见下表 |
-| 摘要 | 包身份 `@huyuan/pixel-office`；预构建 dist；25×25 色块世界桩图；village 白名单两 PNG；pack 门禁；LICENSE/README/AGENTS 同步；**尚未** `npm publish` |
+| 摘要 | 包身份 `@huyuan-ai/pixel-office`；预构建 dist；25×25 色块世界桩图；village 白名单两 PNG；pack 门禁；LICENSE/README/AGENTS 同步；**尚未** `npm publish` |
 
 ### Release 交付
 
@@ -300,7 +301,7 @@ stateDiagram-v2
 | S2-4 | GET /api/openapi.json | R0 | 通过 | 起服后可用（与 00007/00008 同路径） |
 | S2-5 | pack 有 dist/index.html；无 art/；village 仅白名单 | R0 | 通过 | HTTP：`pnpm pack:gate` OK，≈2.70 MiB；白名单 `fountain-sculptures.png` + `decor-rugs-1.png` |
 | S2-6 | 大门↔世界桩图白格往返不断 | R0 | 通过 | UI-click：人工点大门进蓝底 25×25，点白格回办公室 |
-| R0-pkg | `@huyuan/pixel-office` + engines≥20 + 瘦 dependencies | R0 | 通过 | `package.json` |
+| R0-pkg | `@huyuan-ai/pixel-office` + engines≥20 + 瘦 dependencies | R0 | 通过 | `package.json` |
 | R0-stub | 25×25 world-stub 替换 wa-village 大图 | R0 | 通过 | `scripts/gen-world-stub.mjs`、`world-map.json`、`world-stub.png` |
 | R0-docs | README npx 首要；AGENTS owns 含发布 | R0 | 通过 | README / AGENTS / LICENSE |
 | R0-build | pnpm build / test 绿 | R0 | 通过 | test 110；build 后 dist≈5.1M（已 strip） |
@@ -309,7 +310,7 @@ stateDiagram-v2
 
 ### 未完成与遗留
 
-- **未执行** `npm publish --access public`（开放项 O1/O2/O4：组织权限、登录 2FA、包名占用确认）。干净机 `npx @huyuan/pixel-office` 冒烟须 publish 后完成。
+- **未执行** `npm publish --access public`（开放项 O1/O2/O4：组织权限、登录 2FA、包名占用确认）。干净机 `npx @huyuan-ai/pixel-office` 冒烟须 publish 后完成。
 - 相对 PRD 初稿「tarball 不含 world-map / 0 条 village」：工程取舍为 **含 25×25 桩图**；village **允许**办公室用到的两 PNG（硬门禁改为白名单，非整目录清零）。
 - R1：tag→CI 自动 publish（范围外）。
 - O3 LICENSE 法务可再审；O6 provenance 不做 R0。

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * npm pack gate for @huyuan/pixel-office.
+ * npm pack gate for @huyuan-ai/pixel-office.
  * Hard fail if tarball lacks dist/index.html, contains art/, maps/reference,
  * or any village path outside the company-25 allowlist.
  *
