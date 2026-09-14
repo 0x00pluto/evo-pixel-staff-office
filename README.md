@@ -87,15 +87,44 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 | `-p, --port <n>` | 端口，默认 `3780` |
 | `--no-open` | 不自动打开浏览器 |
 
-也可设环境变量 `EVO_AGENT_CATALOG`。未指定时依次尝试：当前目录 `CATALOG.json`、`../AgentWikiIndex/CATALOG.json`。
+也可设环境变量 `EVO_AGENT_CATALOG`。未指定时依次尝试：当前目录 `CATALOG.json`、`../AgentWikiIndex/CATALOG.json`。出勤可选 `EVO_PRESENCE_TOKEN`。
 
 ## 操作
 
 - 拖拽：移动相机
 - 滚轮：缩放
-- 点击小人 / 名牌：右侧详情卡
+- 点击小人 / 名牌：右侧详情卡；**黄灯（blocked）再点一次 = 已读灭黄**
 - 点击大门 / 回门区域：办公室 ↔ 世界地图（园区；世界图不显示员工）
 - 顶栏「刷新花名册」：重新读取 JSON
+
+## 实时出勤（Live Presence）
+
+跨机报到谁在干活 / 谁在喊老板。花名册仍是 `GET /api/catalog`；出勤另走 `GET/POST /api/presence`（内存表，进程重启清空）。
+
+**语义：** `working`=在干（绿）；`blocked`=需要老板——卡住 **或** 做完待验收（黄）；`idle`=灭灯（灰）。**任务正常结束必须 POST `blocked`，禁止刚做完直接 `idle`。**
+
+在当前预览 origin 上验收（dev 默认 `http://localhost:5173`，CLI 默认 `3780`）：
+
+```bash
+# 开干 → 绿
+curl -sS -X POST "$ORIGIN/api/presence" \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"<某个 agents[].id>","state":"working","summary":"curl 试出勤"}'
+
+# 做完 / 喊人 → 黄（勿用 idle 表示做完）
+curl -sS -X POST "$ORIGIN/api/presence" \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"<某个 agents[].id>","state":"blocked","summary":"改完了，请验收"}'
+
+# 灭灯 → 灰（等价大屏点击已读）
+curl -sS -X POST "$ORIGIN/api/presence" \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"<某个 agents[].id>","state":"idle"}'
+```
+
+可选鉴权：设 `EVO_PRESENCE_TOKEN` 后，跨机 POST 需 `Authorization: Bearer <token>`（未设则本机开放）。挂局域网时应当设 token。
+
+TTL：`working` 10 分钟无新包 → 合成 idle；`blocked` **1 小时**兜底灭黄（不是 10 分钟）。
 
 ## 数据约定
 
@@ -109,7 +138,8 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 ```
 src/catalog/   类型与映射
-src/cli/       CatalogSource、静态服务、Vite 插件
+src/cli/       CatalogSource、出勤 API、静态服务、Vite 插件
+src/presence/  前端出勤类型与气泡队列
 src/game/      Phaser 办公室、地图注册表与小人 FSM
 src/ui/        名牌、详情卡、工具条
 public/assets/ 像素素材、maps/、CREDITS

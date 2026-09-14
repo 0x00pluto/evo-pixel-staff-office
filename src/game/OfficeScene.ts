@@ -1,6 +1,8 @@
 import Phaser from 'phaser'
 import { SKIN_COUNT } from '../catalog/skinCount'
 import type { AgentPersona } from '../catalog/types'
+import { isLiveLocked } from '../presence/liveLock'
+import type { PresenceRecord, PresenceState } from '../presence/types'
 import {
   dwellMs,
   faceToward,
@@ -66,8 +68,8 @@ const STUCK_MOVE_EPS = 1.5
 const STUCK_REPATH_MAX = 3
 /** Align WA DEPTH_OVERLAY_INDEX: layers after floorLayer draw above agents. */
 const DEPTH_OVERLAY = 1_000_000
-/** World px above sprite top so the plate sits fully over the head (WA ≈ 2; we have 2 lines + hats). */
-const NAMEPLATE_GAP = 12
+/** World px above sprite top so the plate sits just over the head (WA ≈ 2). */
+const NAMEPLATE_GAP = 2
 
 type Point = { x: number; y: number }
 /** Map POI with Tiled object name as soft-claim key (e.g. poi_meeting_0). */
@@ -175,6 +177,8 @@ export class OfficeScene extends Phaser.Scene {
   /** Soft foot shadow under each agent; destroyed with clearAgents. */
   private shadows = new Map<string, Phaser.GameObjects.Ellipse>()
   private runtimes = new Map<string, AgentRuntime>()
+  /** Live presence by agent id (parallel to catalog; not written into AgentPersona). */
+  private presenceById = new Map<string, PresenceRecord>()
   private footDebug = false
   private footDebugGfx: Phaser.GameObjects.Graphics | null = null
   private footDebugLabels: Phaser.GameObjects.Text[] = []
@@ -257,6 +261,7 @@ export class OfficeScene extends Phaser.Scene {
       return
     }
     this.spawnAgents(this.agents)
+    this.enforcePresenceLocks(this.time.now)
   }
 
   reloadAgents(agents: AgentPersona[]) {
@@ -271,6 +276,76 @@ export class OfficeScene extends Phaser.Scene {
       if (!ok) return
     }
     this.spawnAgents(agents)
+    this.enforcePresenceLocks(this.time.now)
+  }
+
+  /**
+   * Apply live presence snapshot from App poll. Does not mutate AgentPersona.
+   * Live-locked agents walk home / stay at desk; blocked disables fidget.
+   */
+  applyPresence(records: PresenceRecord[]) {
+    this.presenceById.clear()
+    for (const r of records) this.presenceById.set(r.id, r)
+    if (getMapKind(this.currentMapId) === 'world') return
+    if (this.assetsFailed || this.switching) return
+    this.enforcePresenceLocks(this.time.now)
+  }
+
+  private presenceState(id: string): PresenceState {
+    return this.presenceById.get(id)?.state ?? 'idle'
+  }
+
+  private presenceSummary(id: string): string {
+    return this.presenceById.get(id)?.summary?.trim() ?? ''
+  }
+
+  /**
+   * Presence overlay: working/blocked cancel wander/meeting and return to desk.
+   * working enables fidget; blocked stands still (no fidget).
+   */
+  private enforcePresenceLocks(now: number) {
+    for (const [id, rt] of this.runtimes) {
+      const state = this.presenceState(id)
+      if (!isLiveLocked(state)) continue
+      const sprite = this.sprites.get(id)
+      if (!sprite) continue
+
+      const needsHome =
+        rt.mode === 'wander' ||
+        rt.poiClaimKey != null ||
+        this.meetingMemberIds.has(id)
+
+      if (needsHome) {
+        this.beginWalkHome(id, sprite, rt, now)
+      } else if (rt.mode !== 'working') {
+        rt.mode = 'working'
+        rt.wanderPhase = 'none'
+        rt.poiKind = null
+        rt.modeUntil = now + workingDurationMs()
+        const desk = this.workstationFor(id)
+        if (desk) {
+          if (desk.computer) {
+            rt.faceDir = faceToward(desk.spawn, desk.computer)
+          }
+          this.setWalkGoal(sprite, rt, desk.spawn, { stretchTimer: true })
+        }
+      }
+
+      if (state === 'blocked') {
+        rt.fidget = 'none'
+        rt.dir = rt.faceDir
+        // Far future: updateWorkingFidget won't start a new fidget.
+        rt.fidgetUntil = now + 86_400_000
+        rt.fidgetEndsAt = 0
+        const anim = `idle-${rt.persona.skin}-${rt.faceDir}`
+        if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
+      } else if (state === 'working') {
+        // Re-enable fidget schedule if we had parked it for blocked.
+        if (rt.fidgetUntil > now + 60_000) {
+          rt.fidgetUntil = now + scheduleFidgetMs()
+        }
+      }
+    }
   }
 
   private setupCameraInput() {
@@ -913,6 +988,7 @@ export class OfficeScene extends Phaser.Scene {
     if (getMapKind(exitMap) !== 'world') {
       // Camera already centered on entry; everyone returns to their own desk.
       this.spawnAgents(this.agents)
+      this.enforcePresenceLocks(this.time.now)
     }
     this.exitCooldownUntil = this.time.now + 1200
     this.switching = false
@@ -1000,13 +1076,6 @@ export class OfficeScene extends Phaser.Scene {
   private tileWalkable(tx: number, ty: number): boolean {
     if (tx < 0 || ty < 0 || tx >= this.mapW || ty >= this.mapH) return false
     return !this.collision[ty]?.[tx]
-  }
-
-  /** Cell under a world point is free (map bounds + collision grid). */
-  private cellWalkable(wx: number, wy: number): boolean {
-    const tx = Math.floor(wx / this.cell)
-    const ty = Math.floor(wy / this.cell)
-    return this.tileWalkable(tx, ty)
   }
 
   /**
@@ -1184,6 +1253,8 @@ export class OfficeScene extends Phaser.Scene {
       []
     for (const [id, rt] of this.runtimes) {
       if (rt.mode !== 'working') continue
+      // Live presence lock: exclude from meeting recruitment (PRD-00007).
+      if (isLiveLocked(this.presenceState(id))) continue
       const sprite = this.sprites.get(id)
       if (!sprite) continue
       const atDesk =
@@ -1589,10 +1660,25 @@ export class OfficeScene extends Phaser.Scene {
       const sprite = this.sprites.get(id)
       if (!sprite) continue
 
+      const liveState = this.presenceState(id)
+      const locked = isLiveLocked(liveState)
+
       if (now >= rt.modeUntil) {
         if (rt.mode === 'wander') {
           // Travel timeout or dwell finished → home (never flash mid-trip via short clock).
           this.beginWalkHome(id, sprite, rt, now)
+        } else if (locked) {
+          // Live lock: renew desk clock only — no fishbowl wander.
+          rt.mode = 'working'
+          rt.wanderPhase = 'none'
+          rt.poiKind = null
+          rt.poiClaimKey = null
+          rt.modeUntil = now + workingDurationMs()
+          if (liveState === 'blocked') {
+            rt.fidget = 'none'
+            rt.dir = rt.faceDir
+            rt.fidgetUntil = now + 86_400_000
+          }
         } else {
           const n = nextDeskMode()
           if (n.mode === 'wander') {
@@ -1631,7 +1717,14 @@ export class OfficeScene extends Phaser.Scene {
       } else if (rt.mode === 'working' && !atDesk) {
         this.followPath(sprite, rt, delta)
       } else if (rt.mode === 'working' && atDesk) {
-        this.updateWorkingFidget(sprite, rt, now)
+        if (liveState === 'blocked') {
+          rt.fidget = 'none'
+          rt.dir = rt.faceDir
+          const anim = `idle-${rt.persona.skin}-${rt.faceDir}`
+          if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
+        } else {
+          this.updateWorkingFidget(sprite, rt, now)
+        }
       } else {
         const anim = `idle-${rt.persona.skin}-${rt.dir}`
         if (sprite.anims.currentAnim?.key !== anim) sprite.play(anim)
@@ -1659,12 +1752,15 @@ export class OfficeScene extends Phaser.Scene {
       const viewW = cam.width || this.scale.width || 1
       const viewH = cam.height || this.scale.height || 1
       const margin = 60 * cam.zoom
+      const summary = this.presenceSummary(id)
 
       plates.push({
         id,
         name: rt.persona.name,
         status: rt.persona.status,
         lifecycle: rt.persona.lifecycle,
+        presence: liveState,
+        line2: summary || rt.persona.status,
         screenX: sx,
         screenY: sy - headLift,
         // Compare screen coords to viewport pixels (cam.width), not displayWidth (world width / zoom).

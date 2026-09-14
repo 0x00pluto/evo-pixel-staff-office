@@ -1,7 +1,8 @@
 import Phaser from 'phaser'
-import type { AgentPersona } from '../catalog/types'
+import type { PresenceRecord } from '../presence/types'
 import { OfficeScene } from './OfficeScene'
 import type { OfficeGameCallbacks, OfficeGameHandle } from './types'
+import type { AgentPersona } from '../catalog/types'
 
 export function createOfficeGame(
   parent: HTMLElement,
@@ -49,6 +50,10 @@ export function createOfficeGame(
     setFootDebug: (on) => {
       const scene = game.scene.getScene('OfficeScene') as OfficeScene | null
       scene?.setFootDebug(on)
+    },
+    applyPresence: (records: PresenceRecord[]) => {
+      const scene = game.scene.getScene('OfficeScene') as OfficeScene | null
+      scene?.applyPresence(records)
     },
   }
 }

@@ -283,7 +283,7 @@ export function collectStandSlots(args: CollectStandSlotsArgs): PropStandSlot[] 
       id,
       tx: c.tx,
       ty: c.ty,
-      dwellFacing: clusterDwellFacing(c, focus),
+      dwellFacing: clusterDwellFacing(c, focus, sideBBoxTiles),
     }))
   }
 
@@ -327,10 +327,44 @@ export function collectStandSlots(args: CollectStandSlotsArgs): PropStandSlot[] 
   return finalize(list)
 }
 
+/**
+ * Dwell facing for a causal stand pad: face the appliance by stand side
+ * (right pad → look left). Avoids faceToward diagonal ties that preferred "up"
+ * when focus was footprint top-left (coffee). Soft pads inside bbox fall back
+ * to nearest footprint cell, then focus.
+ */
 export function clusterDwellFacing(
   stand: { tx: number; ty: number },
   focus: { tx: number; ty: number },
+  sideBBoxTiles: Array<{ tx: number; ty: number }> = [],
 ): 0 | 1 | 2 | 3 {
+  if (sideBBoxTiles.length) {
+    const side = sideOfFootprintNeighbor(
+      stand.tx,
+      stand.ty,
+      footprintBBox(sideBBoxTiles),
+    )
+    if (side === 'left') return 2
+    if (side === 'right') return 1
+    if (side === 'up') return 0
+    if (side === 'down') return 3
+
+    let best = sideBBoxTiles[0]
+    let bestD = Infinity
+    for (const t of sideBBoxTiles) {
+      const d =
+        (t.tx + 0.5 - (stand.tx + 0.5)) ** 2 +
+        (t.ty + 0.5 - (stand.ty + 0.5)) ** 2
+      if (d < bestD) {
+        bestD = d
+        best = t
+      }
+    }
+    return faceToward(
+      { x: stand.tx + 0.5, y: stand.ty + 0.5 },
+      { x: best.tx + 0.5, y: best.ty + 0.5 },
+    )
+  }
   return faceToward(
     { x: stand.tx + 0.5, y: stand.ty + 0.5 },
     { x: focus.tx + 0.5, y: focus.ty + 0.5 },

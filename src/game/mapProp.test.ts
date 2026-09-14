@@ -150,6 +150,9 @@ describe('collectStandSlots stand pads', () => {
       { tx: 24, ty: 17 },
     ])
     expect(slots.some((s) => s.tx === 21 && s.ty === 16)).toBe(false)
+    // Left pad faces right (2); right pad faces left (1).
+    expect(slots.find((s) => s.tx === 22)?.dwellFacing).toBe(2)
+    expect(slots.find((s) => s.tx === 24)?.dwellFacing).toBe(1)
   })
 
   it('case A with down: includes floor below collide', () => {
@@ -174,6 +177,9 @@ describe('collectStandSlots stand pads', () => {
       '23,18',
       '24,17',
     ])
+    expect(slots.find((s) => s.tx === 22)?.dwellFacing).toBe(2)
+    expect(slots.find((s) => s.tx === 24)?.dwellFacing).toBe(1)
+    expect(slots.find((s) => s.ty === 18)?.dwellFacing).toBe(3)
   })
 
   it('case B: no collides → 1x2 footprint has 6 outer neighbors', () => {
@@ -451,5 +457,7 @@ describe('buildPropClusters', () => {
     )
     expect(clusters).toHaveLength(1)
     expect(clusters[0].slots.map((s) => `${s.tx},${s.ty}`)).toEqual(['2,9'])
+    // Right of vertical footprint: face left (not faceToward diagonal → up).
+    expect(clusters[0].slots[0].dwellFacing).toBe(1)
   })
 })

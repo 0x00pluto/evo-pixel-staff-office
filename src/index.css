@@ -88,10 +88,28 @@ canvas {
 
 .hud-dot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 9px;
+  height: 9px;
   border-radius: 0;
   flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* Presence markers: idle draws nothing in NameplateLayer. */
+.hud-dot--working {
+  background: #22c55e;
+  border: 1px solid #052e16;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35);
+  animation: hud-dot-pulse 1.4s ease-in-out infinite;
+}
+
+/* Legacy aliases (detail card / old hooks). */
+.hud-dot--idle {
+  background: #78716c;
+}
+
+.hud-dot--blocked {
+  background: #fbbf24;
 }
 
 .hud-dot--active {
@@ -100,6 +118,88 @@ canvas {
 
 .hud-dot--experiment {
   background: #fbbf24;
+}
+
+/* working gear / blocked mail: shared breathe flash. */
+.hud-presence-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  animation: hud-presence-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes hud-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.15);
+    filter: brightness(1.25);
+  }
+}
+
+/* Hold full brightness longer; dim phase is shorter / slower overall. */
+@keyframes hud-presence-breathe {
+  0%,
+  55% {
+    opacity: 1;
+    filter: brightness(1.15);
+  }
+  75% {
+    opacity: 0.28;
+    filter: brightness(0.85);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1.15);
+  }
+}
+
+/* WA-like say bubble: white pill + soft blur + small tail pointing down. */
+.hud-presence-bubble {
+  max-width: 10rem;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid rgba(86, 86, 86, 0.35);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #1c1917;
+  font-family: var(--hud-font);
+  pointer-events: none;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  transform: translate(-50%, -100%);
+  /* Enter rise only; exit fade is driven by inline opacity. */
+  animation: hud-bubble-rise 280ms ease-out;
+}
+
+.hud-presence-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: rgba(255, 255, 255, 0.82);
+  border-right: 1px solid rgba(86, 86, 86, 0.35);
+  border-bottom: 1px solid rgba(86, 86, 86, 0.35);
+  transform: rotate(45deg);
+}
+
+@keyframes hud-bubble-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% + 6px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
 }
 
 .hud-btn {

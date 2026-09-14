@@ -64,7 +64,9 @@
 | [`src/App.tsx`](../src/App.tsx) | 拉取 `/api/catalog`、挂载 Phaser、HUD 状态 |
 | [`src/catalog/`](../src/catalog/) | `AgentPersona` 类型与 TS 侧映射（[`mapPersona.ts`](../src/catalog/mapPersona.ts)）；同目录 `*.test.ts` |
 | [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) | **运行时真正读 JSON 的地方**（Vite 插件与 CLI 共用） |
-| [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) | 开发态 `GET /api/catalog` |
+| [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) | 开发态 `GET /api/catalog` + `GET/POST /api/presence` |
+| [`src/cli/presence-store.mjs`](../src/cli/presence-store.mjs) / [`presence-http.mjs`](../src/cli/presence-http.mjs) | 内存出勤表（分态 TTL）与 HTTP 路由；Vite / CLI 共用 |
+| [`src/presence/`](../src/presence/) | 前端出勤类型、活锁谓词、稀疏气泡队列 |
 | [`src/cli/run.mjs`](../src/cli/run.mjs) / [`static.mjs`](../src/cli/static.mjs) | 预览态静态托管 + 同路径 API |
 | [`src/game/`](../src/game/) | Phaser 场景、小人 FSM、相机拖拽/缩放 |
 | [`src/ui/`](../src/ui/) | 名牌层、详情卡、顶栏（React overlay，不是 Phaser 文本） |
@@ -79,6 +81,8 @@ flowchart LR
   catalogJson["CATALOG.json"]
   source["JsonFileSource"]
   api["GET /api/catalog"]
+  presenceApi["GET/POST /api/presence"]
+  store["MemoryPresenceStore"]
   app["App.tsx"]
   game["OfficeScene"]
   hud["React HUD"]
@@ -86,17 +90,33 @@ flowchart LR
   catalogJson --> source
   source --> api
   api --> app
+  presenceApi --> store
+  store --> presenceApi
+  app -->|"poll 1-2s"| presenceApi
   app --> game
   app --> hud
   game -->|"onSelect / onNameplates"| hud
+  app -->|"applyPresence"| game
+  hud -->|"blocked click POST idle"| presenceApi
 ```
 
-两种进程共用同一套 `CatalogSource`（v1 = `JsonFileSource`）：
+两种进程共用同一套 `CatalogSource`（v1 = `JsonFileSource`）与同一套出勤内存表：
 
 | 模式 | 入口 | 默认地址 |
 |---|---|---|
 | 开发 | `pnpm dev` → Vite + [`catalogApiPlugin`](../src/cli/vite-plugin-catalog.ts) | `http://localhost:5173` |
 | 一键预览 | `pnpm build` 后 `pnpm pixel-office` 托管 `dist/` | `http://localhost:3780` |
+
+### 出勤（Live Presence，PRD-00007）
+
+平行于花名册：不改 `AgentPersona` / `CATALOG.json`。
+
+- `POST /api/presence`：`{ id, state: working\|blocked\|idle, summary?, ts? }`；未知 id → 404；可选 `EVO_PRESENCE_TOKEN`（跨机需 Bearer；同源大屏点击灭黄可免）
+- `GET /api/presence`：全员有效出勤（working **600s** / blocked **3600s** 读时合成 idle）
+- 浏览器可见时约 1.5s 轮询 → `OfficeGameHandle.applyPresence` + 工牌标记（idle 无点 / working 齿轮呼吸闪 / blocked 信封呼吸闪）；summary **变化**冒稀疏气泡（≤3）
+- **黄灯已读**：点工牌或小人（有效态 `blocked`）→ 同源 `POST idle`
+- **Agent 合同**：开干 `working`；卡住或**做完待验收**一律 `blocked`（禁止刚做完直接 `idle`）
+- 活锁：`working`/`blocked` 回自己桌；`blocked` 关 fidget；交还 00005/00006 仅在 idle（含 TTL）
 
 ### 花名册映射约定
 
@@ -265,10 +285,11 @@ pnpm build
 `App` 通过 `createOfficeGame` 拿到：
 
 - `reloadAgents(agents)`：刷新花名册后在**当前图**重建小人
+- `applyPresence(records)`：套用出勤快照（活锁回桌 / fidget）
 - `destroy()`：卸载时销毁游戏
 - 回调：`onSelect`、`onNameplates`、`onAssetsError`
 
-名牌坐标由 Phaser 每帧算出屏幕位置，再交给 React [`NameplateLayer`](../src/ui/NameplateLayer.tsx) 渲染（常显名字 + 截断状态；像素 HUD 皮肤在 [`src/index.css`](../src/index.css)）。每个小人有脚底椭圆阴影，随 `clearAgents` / 切图销毁，**不**启用 Phaser Light2D。
+名牌坐标由 Phaser 每帧算出屏幕位置，再交给 React [`NameplateLayer`](../src/ui/NameplateLayer.tsx) 渲染（常显名字；working 齿轮 / blocked 信封，同款呼吸闪；细看靠详情卡「此刻」+ summary 冒泡；像素 HUD 皮肤在 [`src/index.css`](../src/index.css)）。每个小人有脚底椭圆阴影，随 `clearAgents` / 切图销毁，**不**启用 Phaser Light2D。
 
 ## 常见改动落点
 
@@ -276,14 +297,15 @@ pnpm build
 |---|---|
 | 像素 HUD 皮肤 / 字体 | [`src/index.css`](../src/index.css)（`Fusion Pixel 12`、`.hud-panel`）；字体文件 [`public/fonts/`](../public/fonts/)；署名 [`public/assets/CREDITS.md`](../public/assets/CREDITS.md) |
 | 详情卡字段 / 布局 | [`src/ui/AgentCard.tsx`](../src/ui/AgentCard.tsx)（像素直角框，与工牌/顶栏同皮肤） |
-| 名牌样式 | [`src/ui/NameplateLayer.tsx`](../src/ui/NameplateLayer.tsx)（常显工牌；选中高亮置顶） |
+| 名牌样式 / 出勤标记 | [`src/ui/NameplateLayer.tsx`](../src/ui/NameplateLayer.tsx)（仅名字；齿轮 / 信封呼吸闪；无常驻第二行） |
+| 出勤协议 / TTL | [`src/cli/presence-store.mjs`](../src/cli/presence-store.mjs) + [`presence-http.mjs`](../src/cli/presence-http.mjs) |
+| 开发态 API | [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts)（catalog + presence） |
 | 顶栏文案 / 刷新 | [`src/ui/Toolbar.tsx`](../src/ui/Toolbar.tsx) |
 | 小人脚底阴影 | [`src/game/OfficeScene.ts`](../src/game/OfficeScene.ts)（`shadows` Map；无 Light2D） |
 | 状态文案、皮肤规则、字段映射 | [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) **和** [`src/catalog/mapPersona.ts`](../src/catalog/mapPersona.ts) |
 | 走路、碰撞、相机、切图 | [`src/game/OfficeScene.ts`](../src/game/OfficeScene.ts) + [`mapRegistry.ts`](../src/game/mapRegistry.ts) |
 | 办公室 / 桩图布局 | Tiled 编辑 `public/assets/maps/*.json`；重置主图用 `pnpm import:wa-company` → `pnpm gen:assets` |
 | 角色 atlas / 皮肤清单（维护者） | 改 [`scripts/pipoya-64-manifest.txt`](../scripts/pipoya-64-manifest.txt) + [`skinCount.json`](../src/catalog/skinCount.json) → 本机 `pnpm pack:assets` → **提交** `characters.png` |
-| 开发态 API | [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) |
 | 预览 CLI | [`src/cli/run.mjs`](../src/cli/run.mjs) |
 
 ## 边界与坑
@@ -307,7 +329,7 @@ pnpm build
 | `pnpm test` | Vitest 单测（一次跑完） |
 | `pnpm test:watch` | Vitest 监听模式 |
 | `pnpm preview` | Vite 预览（不含花名册 API；日常用 `pixel-office`） |
-| `pnpm pixel-office` | 构建产物 + `/api/catalog` 一键预览 |
+| `pnpm pixel-office` | 构建产物 + `/api/catalog` + `/api/presence` 一键预览 |
 | `pnpm pack:assets` | （维护者偶发）本机 vendor → 覆盖 `characters.png`；日常开发不需要 |
 | `pnpm gen:assets` | pack art + tilesets + **sync 预加载列表** + 校验 Tiled 地图（不写 PNG） |
 | `pnpm sync:tileset-assets` | 仅从地图 `tilesets[]` 同步 `registry.json` / `tilesetAssets.generated.ts` |

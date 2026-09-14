@@ -3,6 +3,10 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createCatalogSource, resolveCatalogPath } from './catalog.mjs'
+import {
+  createPresenceHandler,
+  createPresenceStore,
+} from './presence-http.mjs'
 import { createStaticHandler } from './static.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -35,6 +39,7 @@ function printHelp() {
 
 环境变量:
   EVO_AGENT_CATALOG      与 --catalog 等效
+  EVO_PRESENCE_TOKEN     可选；设置后跨机 POST /api/presence 需 Bearer
 `)
 }
 
@@ -76,8 +81,11 @@ async function main() {
   }
 
   let cached
+  const presenceStore = createPresenceStore()
+
   async function loadPayload() {
     cached = await source.load()
+    presenceStore.retainIds(cached.agents.map((a) => a.id))
     return cached
   }
 
@@ -88,10 +96,27 @@ async function main() {
     process.exit(1)
   }
 
+  const presence = createPresenceHandler({
+    store: presenceStore,
+    getCatalogIds: async () => {
+      const payload = cached ?? (await loadPayload())
+      return payload.agents.map((a) => a.id)
+    },
+    getToken: () => process.env.EVO_PRESENCE_TOKEN,
+  })
+
   const staticHandler = createStaticHandler(distDir)
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
+
+    try {
+      if (await presence.handle(req, res)) return
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
+      return
+    }
 
     if (url.pathname === '/api/catalog') {
       try {

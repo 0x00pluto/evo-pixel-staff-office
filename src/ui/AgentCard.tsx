@@ -1,12 +1,47 @@
 import type { AgentPersona } from '../catalog/types'
+import type { PresenceRecord } from '../presence/types'
 
 interface Props {
   agent: AgentPersona | null
+  presence?: PresenceRecord | null
   onClose: () => void
 }
 
-export function AgentCard({ agent, onClose }: Props) {
+function stateLabel(presence: PresenceRecord | null | undefined): string {
+  if (!presence || presence.state === 'idle') return '空闲'
+  if (presence.state === 'working') return '正在干活'
+  return '需要老板'
+}
+
+function stateIconSrc(presence: PresenceRecord | null | undefined): string | null {
+  if (!presence) return null
+  if (presence.state === 'working') return '/assets/hud/gear.svg'
+  if (presence.state === 'blocked') return '/assets/hud/email.svg'
+  return null
+}
+
+/** Local wall time for last presence report; empty if never reported. */
+function formatPresenceTime(updatedAt: number): string {
+  if (!updatedAt) return ''
+  const d = new Date(updatedAt)
+  const now = new Date()
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  const time = `${hh}:${mm}`
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  if (sameDay) return `今天 ${time}`
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${time}`
+}
+
+export function AgentCard({ agent, presence, onClose }: Props) {
   if (!agent) return null
+
+  const iconSrc = stateIconSrc(presence)
+  const summary = presence?.summary?.trim() ?? ''
+  const when = presence ? formatPresenceTime(presence.updatedAt) : ''
 
   return (
     <aside className="hud-panel absolute top-14 right-3 bottom-3 z-20 flex w-80 max-w-[calc(100%-1.5rem)] flex-col overflow-hidden">
@@ -33,6 +68,41 @@ export function AgentCard({ agent, onClose }: Props) {
       </header>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3 text-xs leading-relaxed">
+        <section>
+          <h3 className="mb-1 text-[10px] tracking-wider text-[var(--hud-text-muted)] uppercase">
+            此刻
+          </h3>
+          <p className="flex items-center gap-1.5 text-[var(--hud-text-muted)]">
+            {iconSrc ? (
+              <img
+                src={iconSrc}
+                alt=""
+                width={14}
+                height={14}
+                className="inline-block shrink-0"
+                aria-hidden
+              />
+            ) : null}
+            <span>{stateLabel(presence)}</span>
+          </p>
+        </section>
+
+        <section>
+          <h3 className="mb-1 text-[10px] tracking-wider text-[var(--hud-text-muted)] uppercase">
+            消息
+          </h3>
+          {summary ? (
+            <div className="hud-panel hud-panel--raised space-y-1.5 px-2.5 py-2">
+              {when ? (
+                <div className="text-[10px] text-[var(--hud-text-muted)]">{when}</div>
+              ) : null}
+              <p className="break-words whitespace-pre-wrap text-[var(--hud-text)]">{summary}</p>
+            </div>
+          ) : (
+            <p className="text-[var(--hud-text-muted)]">暂无汇报</p>
+          )}
+        </section>
+
         {agent.blurb ? (
           <section>
             <h3 className="mb-1 text-[10px] tracking-wider text-[var(--hud-text-muted)] uppercase">

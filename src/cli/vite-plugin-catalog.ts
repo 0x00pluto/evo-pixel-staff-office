@@ -1,20 +1,21 @@
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 
 /**
- * Vite plugin: serves GET /api/catalog during `pnpm dev`
- * using the same CatalogSource as the production CLI.
+ * Vite plugin: serves GET /api/catalog and GET/POST /api/presence during `pnpm dev`
+ * using the same CatalogSource / presence store as the production CLI.
  */
 export function catalogApiPlugin(): Plugin {
   return {
     name: 'pixel-office-catalog-api',
     async configureServer(server) {
-      // Runtime ESM; typings live in catalog.mjs (plain JS).
+      // Runtime ESM; typings live in catalog.mjs / presence-*.mjs (plain JS).
       const catalog = (await import(
         /* @vite-ignore */
         new URL('./catalog.mjs', import.meta.url).href
       )) as {
         createCatalogSource: (opts: { kind: 'json'; path: string }) => {
-          load: () => Promise<unknown>
+          load: () => Promise<{ agents: Array<{ id: string }> }>
         }
         resolveCatalogPath: (opts: {
           cliPath: string | null
@@ -23,8 +24,27 @@ export function catalogApiPlugin(): Plugin {
         }) => string
       }
 
-      let cached: unknown = null
-      let source: { load: () => Promise<unknown> } | null = null
+      const presenceMod = (await import(
+        /* @vite-ignore */
+        new URL('./presence-http.mjs', import.meta.url).href
+      )) as {
+        createPresenceStore: () => {
+          retainIds: (ids: Iterable<string>) => void
+        }
+        createPresenceHandler: (opts: {
+          store: { retainIds: (ids: Iterable<string>) => void }
+          getCatalogIds: () => Promise<string[]>
+          getToken?: () => string | undefined
+        }) => {
+          handle: (req: IncomingMessage, res: ServerResponse) => Promise<boolean>
+        }
+      }
+
+      let cached: { agents: Array<{ id: string }> } | null = null
+      let source: {
+        load: () => Promise<{ agents: Array<{ id: string }> }>
+      } | null = null
+      const presenceStore = presenceMod.createPresenceStore()
 
       function ensureSource() {
         if (source) return source
@@ -37,20 +57,43 @@ export function catalogApiPlugin(): Plugin {
         return source
       }
 
-      server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith('/api/catalog')) {
-          next()
-          return
+      async function loadCatalog(refresh: boolean) {
+        const src = ensureSource()
+        if (refresh || !cached) {
+          cached = await src.load()
+          presenceStore.retainIds(cached.agents.map((a) => a.id))
         }
+        return cached
+      }
+
+      const presence = presenceMod.createPresenceHandler({
+        store: presenceStore,
+        getCatalogIds: async () => {
+          const payload = await loadCatalog(false)
+          return payload.agents.map((a) => a.id)
+        },
+        getToken: () => process.env.EVO_PRESENCE_TOKEN,
+      })
+
+      server.middlewares.use(async (req, res, next) => {
         try {
-          const url = new URL(req.url, 'http://localhost')
-          const src = ensureSource()
-          if (url.searchParams.get('refresh') === '1' || !cached) {
-            cached = await src.load()
+          if (req.url?.startsWith('/api/presence')) {
+            const handled = await presence.handle(req, res)
+            if (handled) return
           }
+
+          if (!req.url?.startsWith('/api/catalog')) {
+            next()
+            return
+          }
+
+          const url = new URL(req.url, 'http://localhost')
+          const payload = await loadCatalog(
+            url.searchParams.get('refresh') === '1',
+          )
           res.setHeader('Content-Type', 'application/json; charset=utf-8')
           res.setHeader('Cache-Control', 'no-store')
-          res.end(JSON.stringify(cached))
+          res.end(JSON.stringify(payload))
         } catch (err) {
           res.statusCode = 500
           res.setHeader('Content-Type', 'application/json; charset=utf-8')

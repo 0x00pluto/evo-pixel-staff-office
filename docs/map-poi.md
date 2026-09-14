@@ -138,6 +138,8 @@ furniture    [身][身]     collides + 动画
 | `poiActivation` = `any` \| `all` | **可选**；默认 `any` | `any`：任一 slot dwell → using；`all` 下期 |
 | Tile Animation | 要动的格子 | using 时播；无 animation 的格只连通、不收成精灵 |
 
+**到站朝向**：因果站位由程序按相对机身边自动朝向（右站→朝左等），**无需**手标 `dwellFacing`。Point 类（lounge/meeting）仍用手标，见 [`map-facing.md`](./map-facing.md)。
+
 示例（打印机 2 行 × 3 列）：
 
 ```text

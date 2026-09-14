@@ -7,11 +7,13 @@
 | 场景 | 谁决定朝向 | 做法 |
 |------|------------|------|
 | 工位（在岗） | 地图两个点 | `spawn_N` 看向同号 `computer_N`（程序 `faceToward`） |
-| lounge / coffee / meeting | 地图一个自定义属性 | 每个 `poi_*` 上的 **`dwellFacing`** |
-| print（因果瓦片连通块） | 程序 | 各 slot 脸朝机身（`faceToward`）；**不要**再插 Point |
+| lounge / meeting | 地图一个自定义属性 | 每个 `poi_*` Point 上的 **`dwellFacing`** |
+| print / coffee（因果瓦片连通块） | 程序 | 各站位按相对机身边朝向（右站→朝左，左站→朝右，下站→朝上）；**不要**再插 Point，也**不用**瓦片标 `dwellFacing` |
 | random 闲逛（无 POI） | 程序默认 | 朝南 `down` |
 
 不要用 Tiled Point 的 **`rotation`**（常为 `0`，会被当成朝右）。不要根据家具瓦片 GID 猜朝向。
+
+因果站位若用「看向 footprint 左上」的 `faceToward`，对角平局会误朝北（咖啡右侧站位）；现按站位边取对向，与打印机左右站一致。
 
 ## 属性名：`dwellFacing`
 
@@ -43,11 +45,12 @@
 - **不写、写错、或 random 闲逛 → 一律朝南 `down`**
 - 不接受 `0`–`3`、`north`、`南`，也不认 `facing` / `direction` 别名
 
-刷点时对着家具想「人站在这是在用什么」：
+刷点时对着家具想「人站在这是在用什么」（仅 Point POI）：
 
-- 咖啡机：脸朝机器
 - 沙发/休息区：脸朝外或朝茶几
 - 会议椅：脸朝桌心，不要朝墙
+
+打印机 / 咖啡机：因果瓦片自动朝机身，不必手标。
 
 ## Tiled 步骤
 
