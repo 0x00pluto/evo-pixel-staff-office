@@ -1,6 +1,6 @@
 {
   "name": "@huyuan-ai/pixel-office",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pixel office big-screen for AgentWikiIndex CATALOG.json — npx one command",
   "type": "module",
   "packageManager": "pnpm@10.26.2",

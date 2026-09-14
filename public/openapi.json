@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "pixel-office HTTP API",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "像素数字员工办公室大屏的机器可读 HTTP 合同（OpenAPI 3.1 JSON，无 Swagger UI）。\n\n## Agent 出勤合同\n- 开干 → POST `state: working`\n- 卡住 **或** 做完待验收 → POST `state: blocked`（禁止刚做完直接 `idle`）\n- 灭灯 / 已读 → POST `state: idle`（与大屏点击黄灯等价）\n\n出勤存在进程内内存表；进程重启后全员隐式 idle。\n读时分态 TTL：working 600s → 合成 idle；blocked 3600s → 合成 idle。\nsummary 最长 40 字（超长截断 + …）；空或缺省 = 不改已存 summary。\n\n花名册与出勤是两张表：`GET /api/catalog` 谁在办公室；`POST /api/catalog` 整表注入并持久化到用户目录；`GET/POST /api/presence` 谁在干活。\n无本地 CATALOG.json 也可启动（空态 agents: []）。用法说明见仓库 `docs/openapi.md`。"
   },
   "servers": [
