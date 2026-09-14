@@ -52,14 +52,17 @@ pnpm import:wa-world
 
 ## 开发
 
-指定花名册路径后启动 Vite（开发态 `/api/catalog` 与 CLI 同源）：
+无本地 `CATALOG.json` 也可启动（空办公室）；也可用可选种子：
 
 ```bash
-# 推荐：带默认花名册 + Vite --force（避免旧依赖缓存）
+# 空态 / 读用户目录 ~/.pixel-office/catalog.json
+pnpm dev
+
+# 推荐：Vite --force（避免旧依赖缓存）
 pnpm dev:office
 
-# 或显式指定花名册
-EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json pnpm dev
+# 或显式指定可选种子
+EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json pnpm dev:office
 ```
 
 浏览器打开终端提示的本地地址（默认 `http://localhost:5173`），**请硬刷新**（Cmd+Shift+R）。
@@ -76,6 +79,8 @@ pnpm test
 
 ```bash
 pnpm build
+pnpm pixel-office
+# 可选种子：
 pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 ```
 
@@ -83,11 +88,11 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 | 参数 | 说明 |
 |---|---|
-| `-c, --catalog <path>` | `CATALOG.json` 路径 |
+| `-c, --catalog <path>` | 可选种子 `CATALOG.json`（无用户目录持久化时加载进内存） |
 | `-p, --port <n>` | 端口，默认 `3780` |
 | `--no-open` | 不自动打开浏览器 |
 
-也可设环境变量 `EVO_AGENT_CATALOG`。未指定时依次尝试：当前目录 `CATALOG.json`、`../AgentWikiIndex/CATALOG.json`。出勤可选 `EVO_PRESENCE_TOKEN`。
+也可设 `EVO_AGENT_CATALOG`（可选种子）。启动顺序：用户目录 `~/.pixel-office/catalog.json` → 可选种子 → 空态。`PIXEL_OFFICE_HOME` 可覆盖用户目录父路径。出勤 / 写花名册可选 `EVO_PRESENCE_TOKEN`。
 
 ## 操作
 
@@ -95,11 +100,28 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 - 滚轮：缩放
 - 点击小人 / 名牌：右侧详情卡；**黄灯（blocked）再点一次 = 已读灭黄**
 - 点击大门 / 回门区域：办公室 ↔ 世界地图（园区；世界图不显示员工）
-- 顶栏「刷新花名册」：重新读取 JSON
+- 顶栏「选择花名册」：读本地 JSON → `POST /api/catalog`（与 curl 同一写入）
+- 顶栏「刷新花名册」：`GET /api/catalog?refresh=1`
+
+## 运行时花名册（Runtime Catalog）
+
+无 wiki 机器上可先起大屏，再注入花名册。合法 POST 写入 `~/.pixel-office/catalog.json`，重启仍在。
+
+```bash
+# 注入整表（body = CATALOG.json）
+curl -sS -X POST "$ORIGIN/api/catalog" \
+  -H 'Content-Type: application/json' \
+  -d @/path/to/CATALOG.json
+
+# 自检
+curl -sS "$ORIGIN/api/catalog" | head
+```
+
+非法 body → `400`，旧花名册（内存与磁盘）保留。设了 `EVO_PRESENCE_TOKEN` 时跨机 POST 需 Bearer。
 
 ## 实时出勤（Live Presence）
 
-跨机报到谁在干活 / 谁在喊老板。花名册仍是 `GET /api/catalog`；出勤另走 `GET/POST /api/presence`（内存表，进程重启清空）。
+跨机报到谁在干活 / 谁在喊老板。花名册走 `GET/POST /api/catalog`；出勤另走 `GET/POST /api/presence`（内存表，进程重启清空）。**先注入花名册再报出勤**；未知 id → 404。
 
 **语义：** `working`=在干（绿）；`blocked`=需要老板——卡住 **或** 做完待验收（黄）；`idle`=灭灯（灰）。**任务正常结束必须 POST `blocked`，禁止刚做完直接 `idle`。**
 
@@ -133,14 +155,14 @@ TTL：`working` 10 分钟无新包 → 合成 idle；`blocked` **1 小时**兜�
 - 只渲染 `workspaces[]`；`unmanaged` 不进办公室
 - `name` ← `title` 中 `—` 前半段
 - `status` ← experiment / `owns[0]` / `blurb` 截断 /「待命」
-- 数据源接口为 `CatalogSource`（v1 = `JsonFileSource`），便于以后换 SQLite / Postgres
+- 运行时权威为用户目录 JSON（`RuntimeCatalog`）；可选种子仅启动加载；`CatalogSource` / `JsonFileSource` 仍预留换源，本仓**不**实现 SQLite / Postgres
 - 地图用静态 id 注册（`company-25`、`world-map`；`kind: office | world`）；花名册**不加** company 字段
 
 ## 目录
 
 ```
 src/catalog/   类型与映射
-src/cli/       CatalogSource、出勤 API、静态服务、Vite 插件
+src/cli/       RuntimeCatalog、出勤 API、静态服务、Vite 插件
 src/presence/  前端出勤类型与气泡队列
 src/game/      Phaser 办公室、地图注册表与小人 FSM
 src/ui/        名牌、详情卡、工具条

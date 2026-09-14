@@ -51,8 +51,8 @@ export function buildOpenApiDocument() {
         `读时分态 TTL：working ${WORKING_TTL_SEC}s → 合成 idle；blocked ${BLOCKED_TTL_SEC}s → 合成 idle。`,
         `summary 最长 ${SUMMARY_MAX_CHARS} 字（超长截断 + …）；空或缺省 = 不改已存 summary。`,
         '',
-        '花名册与出勤是两张表：`GET /api/catalog` 谁在办公室；`GET/POST /api/presence` 谁在干活。',
-        '用法说明见仓库 `docs/openapi.md`。',
+        '花名册与出勤是两张表：`GET /api/catalog` 谁在办公室；`POST /api/catalog` 整表注入并持久化到用户目录；`GET/POST /api/presence` 谁在干活。',
+        '无本地 CATALOG.json 也可启动（空态 agents: []）。用法说明见仓库 `docs/openapi.md`。',
       ].join('\n'),
     },
     servers: [{ url: '/', description: '相对当前 origin（dev 5173 / pixel-office 3780）' }],
@@ -78,8 +78,11 @@ export function buildOpenApiDocument() {
         get: {
           operationId: 'getCatalog',
           summary: '花名册（谁在办公室）',
-          description:
-            '只渲染 CATALOG.json 的 workspaces[]；unmanaged 不进办公室。`?refresh=1` 清缓存后重新读 JSON。',
+          description: [
+            '只渲染 workspaces[]；unmanaged 不进办公室。',
+            '空态合法：无用户目录/种子时返回 agents: []。',
+            '`?refresh=1` 优先重读用户目录持久化文件。',
+          ].join(' '),
           parameters: [
             {
               name: 'refresh',
@@ -91,14 +94,14 @@ export function buildOpenApiDocument() {
           ],
           responses: {
             '200': {
-              description: 'CatalogPayload',
+              description: 'CatalogPayload（可为空 agents）',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/CatalogPayload' },
                   examples: {
                     sample: {
                       value: {
-                        sourcePath: '/path/to/CATALOG.json',
+                        sourcePath: '/path/to/.pixel-office/catalog.json',
                         wiki_index_version: '1',
                         generated_at: '2026-09-14T00:00:00Z',
                         agents: [
@@ -118,12 +121,97 @@ export function buildOpenApiDocument() {
                         ],
                       },
                     },
+                    empty: {
+                      value: {
+                        sourcePath: 'runtime:empty',
+                        agents: [],
+                      },
+                    },
                   },
                 },
               },
             },
             '500': {
-              description: '读花名册失败',
+              description: '读花名册失败（罕见；空态不返回 500）',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ErrorBody' },
+                },
+              },
+            },
+          },
+        },
+        post: {
+          operationId: 'postCatalog',
+          summary: '整表写入花名册并持久化',
+          description: [
+            'Body = 完整 CATALOG.json 对象，必须含 `workspaces` 数组（可为空数组）。',
+            '成功：写入 ~/.pixel-office/catalog.json（或 PIXEL_OFFICE_HOME）、更新内存、presence retainIds。',
+            '失败：400 且不改内存与磁盘。',
+            '鉴权：若设了 EVO_PRESENCE_TOKEN，跨机 POST 需 Bearer；同源浏览器可免。未设则开放。',
+            'Body 硬上限 2 MiB → 413。',
+          ].join('\n'),
+          security: [{}, { bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CatalogJsonBody' },
+                examples: {
+                  sample: {
+                    value: {
+                      wiki_index_version: '1',
+                      generated_at: '2026-09-14T00:00:00Z',
+                      workspaces: [
+                        {
+                          dirname: 'pixel-office',
+                          title: '像素办公室 — 大屏',
+                          lifecycle: 'active',
+                          owns: ['runtime catalog'],
+                          blurb: '',
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: '映射后的 CatalogPayload',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/CatalogPayload' },
+                },
+              },
+            },
+            '400': {
+              description: '校验失败（缺 workspaces / 非对象 / 非法 JSON）',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ErrorBody' },
+                },
+              },
+            },
+            '401': {
+              description: 'Bearer 鉴权失败（仅当 EVO_PRESENCE_TOKEN 已设）',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ErrorBody' },
+                },
+              },
+            },
+            '413': {
+              description: 'Body 超过 2 MiB',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ErrorBody' },
+                },
+              },
+            },
+            '405': {
+              description: '方法不允许',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/ErrorBody' },
@@ -264,7 +352,7 @@ export function buildOpenApiDocument() {
           type: 'http',
           scheme: 'bearer',
           description:
-            '环境变量 EVO_PRESENCE_TOKEN。有值则跨机 POST 需 `Authorization: Bearer <token>`；同源大屏点击灭黄可免。未设则开放。',
+            '环境变量 EVO_PRESENCE_TOKEN。有值则跨机 POST /api/catalog 与 POST /api/presence 需 `Authorization: Bearer <token>`；同源大屏可免。未设则开放。',
         },
       },
       schemas: {
@@ -273,6 +361,36 @@ export function buildOpenApiDocument() {
           required: ['error'],
           properties: {
             error: { type: 'string' },
+          },
+        },
+        CatalogJsonBody: {
+          type: 'object',
+          required: ['workspaces'],
+          description: '完整 CATALOG.json 形状；只映射 workspaces[]',
+          properties: {
+            wiki_index_version: { type: 'string' },
+            generated_at: { type: 'string' },
+            workspaces: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: true,
+                properties: {
+                  dirname: { type: 'string' },
+                  title: { type: 'string' },
+                  lifecycle: { type: 'string' },
+                  owns: { type: 'array', items: { type: 'string' } },
+                  blurb: { type: 'string' },
+                  not: { type: 'string' },
+                  siblings: { type: 'array', items: { type: 'object' } },
+                },
+              },
+            },
+            unmanaged: {
+              type: 'array',
+              description: '不进办公室；可省略',
+              items: { type: 'object' },
+            },
           },
         },
         CatalogSibling: {

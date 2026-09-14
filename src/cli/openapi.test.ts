@@ -23,6 +23,7 @@ describe('buildOpenApiDocument', () => {
     expect(doc.paths['/api/presence']).toBeDefined()
     expect(doc.paths['/api/openapi.json']).toBeDefined()
     expect(doc.paths['/api/catalog'].get.operationId).toBe('getCatalog')
+    expect(doc.paths['/api/catalog'].post.operationId).toBe('postCatalog')
     expect(doc.paths['/api/presence'].get.operationId).toBe('getPresence')
     expect(doc.paths['/api/presence'].post.operationId).toBe('postPresence')
   })

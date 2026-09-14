@@ -23,6 +23,17 @@ async function fetchCatalog(refresh = false): Promise<CatalogPayload> {
   return data
 }
 
+async function postCatalog(body: unknown): Promise<CatalogPayload> {
+  const res = await fetch('/api/catalog', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = (await res.json()) as CatalogPayload & { error?: string }
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+  return data
+}
+
 async function fetchPresence(): Promise<PresenceRecord[]> {
   const res = await fetch('/api/presence')
   const data = (await res.json()) as PresenceSnapshot & { error?: string }
@@ -99,6 +110,29 @@ export default function App() {
       setError(null)
       try {
         const payload = await fetchCatalog(refresh)
+        applyPayload(payload)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [applyPayload],
+  )
+
+  const pickCatalogFile = useCallback(
+    async (file: File) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const text = await file.text()
+        let parsed: unknown
+        try {
+          parsed = JSON.parse(text)
+        } catch {
+          throw new Error('所选文件不是合法 JSON')
+        }
+        const payload = await postCatalog(parsed)
         applyPayload(payload)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
@@ -221,6 +255,7 @@ export default function App() {
         error={error}
         footDebug={footDebug}
         onRefresh={() => void load(true)}
+        onPickCatalog={(file) => void pickCatalogFile(file)}
         onToggleFootDebug={() => {
           setFootDebug((prev) => {
             const next = !prev
@@ -241,6 +276,15 @@ export default function App() {
             void selectAgent(agent)
           }}
         />
+        {!loading && !error && !assetsError && agents.length === 0 ? (
+          <div className="pointer-events-none absolute inset-x-4 top-4 z-20 mx-auto max-w-lg">
+            <div className="hud-panel px-4 py-3 text-center text-xs text-[var(--hud-text-muted)]">
+              办公室空着。请在顶栏「选择花名册」，或让 Agent{' '}
+              <code className="text-[10px]">POST /api/catalog</code> 注入
+              CATALOG.json。
+            </div>
+          </div>
+        ) : null}
         {assetsError ? (
           <div
             role="alert"

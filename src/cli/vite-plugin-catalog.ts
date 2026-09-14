@@ -2,26 +2,56 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 
 /**
- * Vite plugin: serves GET /api/catalog, GET/POST /api/presence, and GET /api/openapi.json
- * during `pnpm dev` using the same CatalogSource / presence store as the production CLI.
+ * Vite plugin: serves GET/POST /api/catalog, GET/POST /api/presence, and GET /api/openapi.json
+ * during `pnpm dev` using the same RuntimeCatalog / presence store as the production CLI.
  */
 export function catalogApiPlugin(): Plugin {
   return {
     name: 'pixel-office-catalog-api',
     async configureServer(server) {
       // Runtime ESM; typings live in catalog.mjs / presence-*.mjs / openapi.mjs (plain JS).
-      const catalog = (await import(
+      const catalogMod = (await import(
         /* @vite-ignore */
         new URL('./catalog.mjs', import.meta.url).href
       )) as {
-        createCatalogSource: (opts: { kind: 'json'; path: string }) => {
-          load: () => Promise<{ agents: Array<{ id: string }> }>
+        RuntimeCatalog: new (opts: {
+          userPath?: string
+          seedPath?: string | null
+          explicitSeed?: boolean
+          log?: (msg: string) => void
+        }) => {
+          boot: () => { agents: Array<{ id: string }>; sourcePath: string }
+          load: (opts?: { refresh?: boolean }) => Promise<{
+            agents: Array<{ id: string }>
+            sourcePath: string
+          }>
+          replace: (body: unknown) =>
+            | { ok: true; payload: { agents: Array<{ id: string }> } }
+            | { ok: false; error: string }
         }
-        resolveCatalogPath: (opts: {
+        resolveSeedForBoot: (opts: {
           cliPath: string | null
           envPath: string | undefined
           cwd: string
-        }) => string
+        }) => {
+          seedPath: string | null
+          explicitSeed: boolean
+          missingExplicit?: string
+        }
+        userCatalogPath: () => string
+      }
+
+      const catalogHttpMod = (await import(
+        /* @vite-ignore */
+        new URL('./catalog-http.mjs', import.meta.url).href
+      )) as {
+        createCatalogHandler: (opts: {
+          catalog: InstanceType<typeof catalogMod.RuntimeCatalog>
+          presenceStore: { retainIds: (ids: Iterable<string>) => void }
+          getToken?: () => string | undefined
+        }) => {
+          handle: (req: IncomingMessage, res: ServerResponse) => Promise<boolean>
+        }
       }
 
       const presenceMod = (await import(
@@ -47,36 +77,56 @@ export function catalogApiPlugin(): Plugin {
         handleOpenApi: (req: IncomingMessage, res: ServerResponse) => boolean
       }
 
-      let cached: { agents: Array<{ id: string }> } | null = null
-      let source: {
-        load: () => Promise<{ agents: Array<{ id: string }> }>
-      } | null = null
+      const seed = catalogMod.resolveSeedForBoot({
+        cliPath: null,
+        envPath: process.env.EVO_AGENT_CATALOG,
+        cwd: process.cwd(),
+      })
+
+      if (seed.missingExplicit) {
+        console.error(
+          `[pixel-office] 花名册不存在: ${seed.missingExplicit}`,
+        )
+        // Dev: still start empty rather than crash Vite; log loudly.
+      }
+
+      let catalog = new catalogMod.RuntimeCatalog({
+        userPath: catalogMod.userCatalogPath(),
+        seedPath: seed.missingExplicit ? null : seed.seedPath,
+        explicitSeed: seed.explicitSeed && !seed.missingExplicit,
+        log: (msg) => console.warn('[pixel-office]', msg),
+      })
+
       const presenceStore = presenceMod.createPresenceStore()
 
-      function ensureSource() {
-        if (source) return source
-        const catalogPath = catalog.resolveCatalogPath({
-          cliPath: null,
-          envPath: process.env.EVO_AGENT_CATALOG,
-          cwd: process.cwd(),
+      try {
+        const payload = catalog.boot()
+        presenceStore.retainIds(payload.agents.map((a) => a.id))
+      } catch (err) {
+        console.error(
+          '[pixel-office] catalog boot failed, empty:',
+          err instanceof Error ? err.message : err,
+        )
+        catalog = new catalogMod.RuntimeCatalog({
+          userPath: catalogMod.userCatalogPath(),
+          seedPath: null,
+          explicitSeed: false,
+          log: (msg) => console.warn('[pixel-office]', msg),
         })
-        source = catalog.createCatalogSource({ kind: 'json', path: catalogPath })
-        return source
+        const payload = catalog.boot()
+        presenceStore.retainIds(payload.agents.map((a) => a.id))
       }
 
-      async function loadCatalog(refresh: boolean) {
-        const src = ensureSource()
-        if (refresh || !cached) {
-          cached = await src.load()
-          presenceStore.retainIds(cached.agents.map((a) => a.id))
-        }
-        return cached
-      }
+      const catalogApi = catalogHttpMod.createCatalogHandler({
+        catalog,
+        presenceStore,
+        getToken: () => process.env.EVO_PRESENCE_TOKEN,
+      })
 
       const presence = presenceMod.createPresenceHandler({
         store: presenceStore,
         getCatalogIds: async () => {
-          const payload = await loadCatalog(false)
+          const payload = await catalog.load()
           return payload.agents.map((a) => a.id)
         },
         getToken: () => process.env.EVO_PRESENCE_TOKEN,
@@ -88,23 +138,17 @@ export function catalogApiPlugin(): Plugin {
             if (openapiMod.handleOpenApi(req, res)) return
           }
 
+          if (req.url?.startsWith('/api/catalog')) {
+            const handled = await catalogApi.handle(req, res)
+            if (handled) return
+          }
+
           if (req.url?.startsWith('/api/presence')) {
             const handled = await presence.handle(req, res)
             if (handled) return
           }
 
-          if (!req.url?.startsWith('/api/catalog')) {
-            next()
-            return
-          }
-
-          const url = new URL(req.url, 'http://localhost')
-          const payload = await loadCatalog(
-            url.searchParams.get('refresh') === '1',
-          )
-          res.setHeader('Content-Type', 'application/json; charset=utf-8')
-          res.setHeader('Cache-Control', 'no-store')
-          res.end(JSON.stringify(payload))
+          next()
         } catch (err) {
           res.statusCode = 500
           res.setHeader('Content-Type', 'application/json; charset=utf-8')

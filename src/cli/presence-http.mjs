@@ -6,13 +6,34 @@ import { createPresenceStore } from './presence-store.mjs'
 
 /**
  * @param {import('http').IncomingMessage} req
+ * @param {{ maxBytes?: number }} [opts]
  * @returns {Promise<unknown>}
  */
-export function readJsonBody(req) {
+export function readJsonBody(req, opts = {}) {
+  const maxBytes =
+    typeof opts.maxBytes === 'number' && opts.maxBytes > 0
+      ? opts.maxBytes
+      : undefined
   return new Promise((resolve, reject) => {
     const chunks = []
-    req.on('data', (c) => chunks.push(c))
+    let size = 0
+    let rejected = false
+    req.on('data', (c) => {
+      if (rejected) return
+      size += c.length
+      if (maxBytes !== undefined && size > maxBytes) {
+        rejected = true
+        const err = Object.assign(new Error('payload too large'), {
+          status: 413,
+        })
+        reject(err)
+        req.destroy()
+        return
+      }
+      chunks.push(c)
+    })
     req.on('end', () => {
+      if (rejected) return
       const raw = Buffer.concat(chunks).toString('utf8').trim()
       if (!raw) {
         resolve({})
@@ -24,7 +45,9 @@ export function readJsonBody(req) {
         reject(new Error('invalid JSON'))
       }
     })
-    req.on('error', reject)
+    req.on('error', (err) => {
+      if (!rejected) reject(err)
+    })
   })
 }
 

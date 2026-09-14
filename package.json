@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:office": "EVO_AGENT_CATALOG=\"${EVO_AGENT_CATALOG:-$HOME/Documents/Codex/AgentWikiIndex/CATALOG.json}\" vite --force",
+    "dev:office": "vite --force",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",

@@ -39,9 +39,12 @@
 Node 用 **pnpm** 管理：`pnpm install` / `pnpm <script>`（安装命令只给用户手动执行，不代跑）。
 
 ```bash
+# 可选种子（无用户目录持久化时加载进内存）
 EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json pnpm dev
 pnpm test
 pnpm build
+pnpm pixel-office
+# 或带可选种子：
 pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 ```
 
@@ -50,5 +53,5 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 | 字段 | 值 |
 |---|---|
 | lifecycle | active |
-| owns | 像素办公室大屏；CATALOG.json 花名册可视化；pixel-office 本地一键预览；跨机出勤 `POST/GET /api/presence`（内存表 + 分态 TTL）；OpenAPI 3.1 `GET /api/openapi.json` |
+| owns | 像素办公室大屏；CATALOG.json 花名册可视化；运行时 `POST /api/catalog` 整表注入 + 用户目录 `~/.pixel-office/catalog.json` 持久化；pixel-office 本地一键预览（无本地 JSON 可空态启动）；跨机出勤 `POST/GET /api/presence`（内存表 + 分态 TTL）；OpenAPI 3.1 `GET /api/openapi.json` |
 | not | Agent 业务实现；任务队列 / 审批闸 / 解析 IDE 日志；发布 npm registry；SQLite/Postgres 建表（仅预留 CatalogSource 接口） |

@@ -2,7 +2,12 @@ import fs from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createCatalogSource, resolveCatalogPath } from './catalog.mjs'
+import { createCatalogHandler } from './catalog-http.mjs'
+import {
+  resolveSeedForBoot,
+  RuntimeCatalog,
+  userCatalogPath,
+} from './catalog.mjs'
 import {
   createPresenceHandler,
   createPresenceStore,
@@ -29,18 +34,23 @@ function printHelp() {
   console.log(`pixel-office — 像素数字员工办公室大屏
 
 用法:
+  pnpm pixel-office
   pnpm pixel-office --catalog <CATALOG.json路径>
   pnpm pixel-office -c ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 选项:
-  -c, --catalog <path>   花名册 CATALOG.json 路径
+  -c, --catalog <path>   可选种子 CATALOG.json（无用户目录持久化时加载进内存）
   -p, --port <n>         端口（默认 3780）
   --no-open              不自动打开浏览器
   -h, --help             帮助
 
 环境变量:
-  EVO_AGENT_CATALOG      与 --catalog 等效
-  EVO_PRESENCE_TOKEN     可选；设置后跨机 POST /api/presence 需 Bearer
+  EVO_AGENT_CATALOG      与 --catalog 等效（可选种子）
+  PIXEL_OFFICE_HOME      用户目录父路径（默认 ~/.pixel-office）；持久化 catalog.json
+  EVO_PRESENCE_TOKEN     可选；设置后跨机 POST /api/catalog 与 /api/presence 需 Bearer
+
+无本地 CATALOG.json 也可启动（空办公室）。运行时注入：
+  curl -X POST http://localhost:3780/api/catalog -H 'Content-Type: application/json' -d @CATALOG.json
 `)
 }
 
@@ -60,19 +70,23 @@ async function main() {
     process.exit(0)
   }
 
-  let catalogPath
-  try {
-    catalogPath = resolveCatalogPath({
-      cliPath: opts.catalog,
-      envPath: process.env.EVO_AGENT_CATALOG,
-      cwd: process.cwd(),
-    })
-  } catch (err) {
-    console.error('[pixel-office]', err instanceof Error ? err.message : err)
+  const seed = resolveSeedForBoot({
+    cliPath: opts.catalog,
+    envPath: process.env.EVO_AGENT_CATALOG,
+    cwd: process.cwd(),
+  })
+  if (seed.missingExplicit) {
+    console.error(`[pixel-office] 花名册不存在: ${seed.missingExplicit}`)
     process.exit(1)
   }
 
-  const source = createCatalogSource({ kind: 'json', path: catalogPath })
+  const catalog = new RuntimeCatalog({
+    userPath: userCatalogPath(),
+    seedPath: seed.seedPath,
+    explicitSeed: seed.explicitSeed,
+    log: (msg) => console.warn('[pixel-office]', msg),
+  })
+
   const distDir = path.join(root, 'dist')
   if (!fs.existsSync(path.join(distDir, 'index.html'))) {
     console.error(
@@ -81,26 +95,30 @@ async function main() {
     process.exit(1)
   }
 
-  let cached
   const presenceStore = createPresenceStore()
 
-  async function loadPayload() {
-    cached = await source.load()
-    presenceStore.retainIds(cached.agents.map((a) => a.id))
-    return cached
-  }
-
+  let cached
   try {
-    await loadPayload()
+    cached = catalog.boot()
+    presenceStore.retainIds(cached.agents.map((a) => a.id))
   } catch (err) {
-    console.error('[pixel-office] 读取花名册失败:', err instanceof Error ? err.message : err)
+    console.error(
+      '[pixel-office] 读取花名册失败:',
+      err instanceof Error ? err.message : err,
+    )
     process.exit(1)
   }
+
+  const catalogApi = createCatalogHandler({
+    catalog,
+    presenceStore,
+    getToken: () => process.env.EVO_PRESENCE_TOKEN,
+  })
 
   const presence = createPresenceHandler({
     store: presenceStore,
     getCatalogIds: async () => {
-      const payload = cached ?? (await loadPayload())
+      const payload = await catalog.load()
       return payload.agents.map((a) => a.id)
     },
     getToken: () => process.env.EVO_PRESENCE_TOKEN,
@@ -109,10 +127,16 @@ async function main() {
   const staticHandler = createStaticHandler(distDir)
 
   const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
-
     try {
       if (handleOpenApi(req, res)) return
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
+      return
+    }
+
+    try {
+      if (await catalogApi.handle(req, res)) return
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
@@ -127,31 +151,13 @@ async function main() {
       return
     }
 
-    if (url.pathname === '/api/catalog') {
-      try {
-        const payload =
-          url.searchParams.get('refresh') === '1'
-            ? await loadPayload()
-            : (cached ?? (await loadPayload()))
-        res.writeHead(200, {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Cache-Control': 'no-store',
-        })
-        res.end(JSON.stringify(payload))
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
-      }
-      return
-    }
-
     staticHandler(req, res)
   })
 
   server.listen(opts.port, async () => {
     const url = `http://localhost:${opts.port}`
     console.log(`[pixel-office] ${url}`)
-    console.log(`[pixel-office] catalog: ${catalogPath}`)
+    console.log(`[pixel-office] catalog: ${cached.sourcePath}`)
     console.log(`[pixel-office] agents: ${cached.agents.length}`)
     if (opts.openBrowser) await openUrl(url)
   })

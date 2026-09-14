@@ -9,3 +9,4 @@
 | 00005 | `specs/prds/prd-00005-team-at-work.md` | 办公室默认在岗：一人一桌、工作为常态、工牌可读 owns；不坐下、不加 CEO、不按 siblings 排座；工程 partial |
 | 00006 | `specs/prds/prd-00006-meaningful-wander-events.md` | 有意义闲逛：个人差事（lounge/coffee 软占）与集体开会（2–3 人分椅、全员到齐散会）；arity×place；工程 accepted（R0） |
 | 00007 | `specs/prds/prd-00007-live-presence.md` | 三态出勤：完工必 blocked；大屏点击已读灭黄；blocked 1h / working 10min TTL；工程 accepted（R0） |
+| 00008 | `specs/prds/prd-00008-runtime-catalog.md` | 运行时花名册：无本地 JSON 可启动；POST /api/catalog + 界面选文件；用户目录持久化；工程 accepted（R0） |

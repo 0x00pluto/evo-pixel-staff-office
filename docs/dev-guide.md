@@ -52,7 +52,7 @@
 | Lint | `oxlint`（`pnpm lint`） |
 | 单测 | Vitest（`pnpm test`；用例与源码同目录 `*.test.ts`） |
 
-环境建议：Node 20 LTS 或 22+。花名册来自环境变量 `EVO_AGENT_CATALOG`，或同级 `../AgentWikiIndex/CATALOG.json`，或当前目录 `CATALOG.json`。
+环境建议：Node 20 LTS 或 22+。花名册优先读 `~/.pixel-office/catalog.json`（`PIXEL_OFFICE_HOME` 可覆盖）；可选种子 `EVO_AGENT_CATALOG` / `--catalog` / cwd `CATALOG.json` / `../AgentWikiIndex/CATALOG.json`；皆无则空态启动。
 
 质量门禁：`pnpm lint` + `pnpm test` + `pnpm build`。单测覆盖纯逻辑（花名册映射双份、选图、小人 FSM）；不测 Phaser 画布与 React HUD。
 
@@ -62,10 +62,11 @@
 
 | 路径 | 职责 |
 |---|---|
-| [`src/App.tsx`](../src/App.tsx) | 拉取 `/api/catalog`、挂载 Phaser、HUD 状态 |
+| [`src/App.tsx`](../src/App.tsx) | 拉取 `/api/catalog`、挂载 Phaser、HUD 状态；选文件 POST |
 | [`src/catalog/`](../src/catalog/) | `AgentPersona` 类型与 TS 侧映射（[`mapPersona.ts`](../src/catalog/mapPersona.ts)）；同目录 `*.test.ts` |
-| [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) | **运行时真正读 JSON 的地方**（Vite 插件与 CLI 共用） |
-| [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) | 开发态 `GET /api/catalog` + `GET/POST /api/presence` + `GET /api/openapi.json` |
+| [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) | **RuntimeCatalog**（用户目录持久化 + 可选种子 + 空态）与映射 |
+| [`src/cli/catalog-http.mjs`](../src/cli/catalog-http.mjs) | `GET/POST /api/catalog`（Vite / CLI 共用） |
+| [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) | 开发态 catalog + presence + openapi |
 | [`src/cli/presence-store.mjs`](../src/cli/presence-store.mjs) / [`presence-http.mjs`](../src/cli/presence-http.mjs) | 内存出勤表（分态 TTL）与 HTTP 路由；Vite / CLI 共用 |
 | [`src/cli/openapi.mjs`](../src/cli/openapi.mjs) | OpenAPI 3.1 文档生成 + `GET /api/openapi.json`；落盘见 `pnpm gen:openapi` |
 | [`src/presence/`](../src/presence/) | 前端出勤类型、活锁谓词、稀疏气泡队列 |
@@ -80,38 +81,51 @@
 
 ```mermaid
 flowchart LR
-  catalogJson["CATALOG.json"]
-  source["JsonFileSource"]
-  api["GET /api/catalog"]
+  userdir["~/.pixel-office/catalog.json"]
+  seed["optional seed"]
+  runtime["RuntimeCatalog"]
+  apiGet["GET /api/catalog"]
+  apiPost["POST /api/catalog"]
   presenceApi["GET/POST /api/presence"]
   store["MemoryPresenceStore"]
   app["App.tsx"]
   game["OfficeScene"]
   hud["React HUD"]
 
-  catalogJson --> source
-  source --> api
-  api --> app
+  userdir --> runtime
+  seed --> runtime
+  runtime --> apiGet
+  apiPost --> runtime
+  runtime -->|"retainIds"| store
+  apiGet --> app
   presenceApi --> store
   store --> presenceApi
   app -->|"poll 1-2s"| presenceApi
   app --> game
   app --> hud
+  hud -->|"pick file POST"| apiPost
   game -->|"onSelect / onNameplates"| hud
   app -->|"applyPresence"| game
   hud -->|"blocked click POST idle"| presenceApi
 ```
 
-两种进程共用同一套 `CatalogSource`（v1 = `JsonFileSource`）与同一套出勤内存表；机器可读合同见 [`docs/openapi.md`](./openapi.md) / `GET /api/openapi.json`。
+两种进程共用同一套 `RuntimeCatalog` 与同一套出勤内存表；机器可读合同见 [`docs/openapi.md`](./openapi.md) / `GET /api/openapi.json`。
 
 | 模式 | 入口 | 默认地址 |
 |---|---|---|
 | 开发 | `pnpm dev` → Vite + [`catalogApiPlugin`](../src/cli/vite-plugin-catalog.ts) | `http://localhost:5173` |
 | 一键预览 | `pnpm build` 后 `pnpm pixel-office` 托管 `dist/` | `http://localhost:3780` |
 
+### 运行时花名册（PRD-00008）
+
+- 启动：用户目录 → 可选种子（R0 仅进内存）→ 空态；**不因缺文件 exit**
+- `POST /api/catalog`：整表覆盖 + 原子写入用户目录；校验失败 400 保留旧表
+- 顶栏「选择花名册」：File → POST（薄客户端）
+- 花名册变更后 `presence.retainIds`
+
 ### 出勤（Live Presence，PRD-00007）
 
-平行于花名册：不改 `AgentPersona` / `CATALOG.json`。
+平行于花名册：不改 `AgentPersona` / CATALOG schema。
 
 - `POST /api/presence`：`{ id, state: working\|blocked\|idle, summary?, ts? }`；未知 id → 404；可选 `EVO_PRESENCE_TOKEN`（跨机需 Bearer；同源大屏点击灭黄可免）
 - `GET /api/presence`：全员有效出勤（working **600s** / blocked **3600s** 读时合成 idle）
@@ -131,7 +145,7 @@ flowchart LR
 - `skin` ← `hash(id) % SKIN_COUNT`（[`skinCount.json`](../src/catalog/skinCount.json)，现 64）
 - `CatalogSource` 只预留换源接口，本仓**不**实现 SQLite / Postgres
 
-顶栏「刷新花名册」请求 `/api/catalog?refresh=1`，清缓存后重新读 JSON。
+顶栏「刷新花名册」请求 `/api/catalog?refresh=1`，优先重读用户目录。
 
 ## 第一次把项目跑起来
 
@@ -143,16 +157,17 @@ flowchart LR
 pnpm install
 ```
 
-### 2. 准备花名册
+### 2. 准备花名册（可选）
 
-任选其一：
+无本地文件也可 `pnpm dev` / `pnpm pixel-office`（空办公室）。需要种子时任选其一：
 
 ```bash
-# 推荐：显式指定路径
+# 可选种子（进内存；有用户目录持久化时用户目录优先）
 export EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 # 或保证同级存在 ../AgentWikiIndex/CATALOG.json
 # 或当前目录有 CATALOG.json
+# 或启动后顶栏「选择花名册」/ curl POST /api/catalog
 ```
 
 ### 3. 准备像素素材
