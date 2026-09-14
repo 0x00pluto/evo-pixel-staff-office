@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "pixel-office": "node ./bin/pixel-office.mjs",
+    "gen:openapi": "node ./scripts/gen-openapi.mjs",
     "gen:assets": "node ./scripts/pack-art-tilesets.mjs && node ./scripts/pack-external-tilesets.mjs && node ./scripts/sync-tileset-assets-from-maps.mjs && node ./scripts/gen-pixel-assets.mjs",
     "pack:art-tilesets": "node ./scripts/pack-art-tilesets.mjs",
     "sync:tileset-assets": "node ./scripts/sync-tileset-assets-from-maps.mjs",

@@ -50,5 +50,5 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 | 字段 | 值 |
 |---|---|
 | lifecycle | active |
-| owns | 像素办公室大屏；CATALOG.json 花名册可视化；pixel-office 本地一键预览；跨机出勤 `POST/GET /api/presence`（内存表 + 分态 TTL） |
+| owns | 像素办公室大屏；CATALOG.json 花名册可视化；pixel-office 本地一键预览；跨机出勤 `POST/GET /api/presence`（内存表 + 分态 TTL）；OpenAPI 3.1 `GET /api/openapi.json` |
 | not | Agent 业务实现；任务队列 / 审批闸 / 解析 IDE 日志；发布 npm registry；SQLite/Postgres 建表（仅预留 CatalogSource 接口） |

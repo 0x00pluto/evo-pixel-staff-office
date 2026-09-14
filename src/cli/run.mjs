@@ -7,6 +7,7 @@ import {
   createPresenceHandler,
   createPresenceStore,
 } from './presence-http.mjs'
+import { handleOpenApi } from './openapi.mjs'
 import { createStaticHandler } from './static.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -109,6 +110,14 @@ async function main() {
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
+
+    try {
+      if (handleOpenApi(req, res)) return
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }))
+      return
+    }
 
     try {
       if (await presence.handle(req, res)) return

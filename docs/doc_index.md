@@ -5,8 +5,9 @@
 ## Index
 
 - `AGENTS.md`: 工作区约定、目录语义（含 `art/` 作者工作区 vs `public/` 运行时）、能力声明（含出勤窄例外）；本仓 MCP 项目名 `Users-peng.zhi-Documents-Object-huyuan-evo-agent-team`（**先 MCP 再 Grep**）；团队 Cursor 命令见 `.cursor/commands/team/`
-- `README.md`: 启动方式、技术栈、操作说明、出勤 curl 验收与数据约定；含 Tiled maps / `pack:assets` / `gen:assets` 校验
-- `docs/dev-guide.md`: 新人开发指南——架构、数据流（catalog + presence）、本地启动、游戏层约定、**代码检索顺序**；**对齐 WA 人物做法**（非 24 套数量）、脚底碰撞盒 24×24；Vitest 单测（`src/**/*.test.ts`，`pnpm test`）
+- `README.md`: 启动方式、技术栈、操作说明、出勤 curl 验收与数据约定；OpenAPI 见 `docs/openapi.md`；含 Tiled maps / `pack:assets` / `gen:assets` 校验
+- `docs/dev-guide.md`: 新人开发指南——架构、数据流（catalog + presence + openapi）、本地启动、游戏层约定、**代码检索顺序**；**对齐 WA 人物做法**（非 24 套数量）、脚底碰撞盒 24×24；Vitest 单测（`src/**/*.test.ts`，`pnpm test`）
+- `docs/openapi.md`: OpenAPI 3.1 JSON 合同用法——`GET /api/openapi.json`（无 Swagger UI）；Agent 调法；`pnpm gen:openapi` 防漂移；字段以 JSON 为准
 - `docs/map-editing.md`: 改图交接手册——心智模型（`floorLayer`）、任务菜谱、碰撞 / exit / objects、踩坑清单；**art/maps + art/tilesets**、`pack:art-tilesets` 多目录顺序锁定；WA 抠格执行清单见 `docs/workflows/crop-wa-tiles.md`
 - `docs/workflows/_TEMPLATE.md`: 业务 workflow 六段骨架；新建可复跑流程时复制并改名，写完后登记本索引
 - `docs/workflows/crop-wa-tiles.md`: 从 WA `tileset*_export` 只读抠格 → `temp/crops/`（`pnpm crop:tiles`）；禁止写回；晋升 `raw/` → 条带 `src/` → `pack:art-tilesets`

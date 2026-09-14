@@ -2,14 +2,14 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 
 /**
- * Vite plugin: serves GET /api/catalog and GET/POST /api/presence during `pnpm dev`
- * using the same CatalogSource / presence store as the production CLI.
+ * Vite plugin: serves GET /api/catalog, GET/POST /api/presence, and GET /api/openapi.json
+ * during `pnpm dev` using the same CatalogSource / presence store as the production CLI.
  */
 export function catalogApiPlugin(): Plugin {
   return {
     name: 'pixel-office-catalog-api',
     async configureServer(server) {
-      // Runtime ESM; typings live in catalog.mjs / presence-*.mjs (plain JS).
+      // Runtime ESM; typings live in catalog.mjs / presence-*.mjs / openapi.mjs (plain JS).
       const catalog = (await import(
         /* @vite-ignore */
         new URL('./catalog.mjs', import.meta.url).href
@@ -38,6 +38,13 @@ export function catalogApiPlugin(): Plugin {
         }) => {
           handle: (req: IncomingMessage, res: ServerResponse) => Promise<boolean>
         }
+      }
+
+      const openapiMod = (await import(
+        /* @vite-ignore */
+        new URL('./openapi.mjs', import.meta.url).href
+      )) as {
+        handleOpenApi: (req: IncomingMessage, res: ServerResponse) => boolean
       }
 
       let cached: { agents: Array<{ id: string }> } | null = null
@@ -77,6 +84,10 @@ export function catalogApiPlugin(): Plugin {
 
       server.middlewares.use(async (req, res, next) => {
         try {
+          if (req.url?.startsWith('/api/openapi.json')) {
+            if (openapiMod.handleOpenApi(req, res)) return
+          }
+
           if (req.url?.startsWith('/api/presence')) {
             const handled = await presence.handle(req, res)
             if (handled) return

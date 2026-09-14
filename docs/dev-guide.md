@@ -9,6 +9,7 @@
 | [`AGENTS.md`](../AGENTS.md) | 目录语义、能力声明（owns / not）、Agent 协作约定 |
 | [`README.md`](../README.md) | 30 秒启动、素材准备、操作说明 |
 | [`docs/doc_index.md`](./doc_index.md) | 技术文档地图 |
+| [`docs/openapi.md`](./openapi.md) | OpenAPI 3.1 JSON 合同：怎么读 / Agent 怎么调 / 怎么改（无 Swagger UI） |
 | [`docs/wa-reference.md`](./wa-reference.md) | WA 双参考仓：MCP `workadventure` / `wa-village`，文件降级 |
 | [`docs/map-editing.md`](./map-editing.md) | 改图交接手册：floorLayer 心智模型、任务菜谱、碰撞 / 出门 |
 | [`specs/prds/`](../specs/prds/) | 产品规格（PRD） |
@@ -64,8 +65,9 @@
 | [`src/App.tsx`](../src/App.tsx) | 拉取 `/api/catalog`、挂载 Phaser、HUD 状态 |
 | [`src/catalog/`](../src/catalog/) | `AgentPersona` 类型与 TS 侧映射（[`mapPersona.ts`](../src/catalog/mapPersona.ts)）；同目录 `*.test.ts` |
 | [`src/cli/catalog.mjs`](../src/cli/catalog.mjs) | **运行时真正读 JSON 的地方**（Vite 插件与 CLI 共用） |
-| [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) | 开发态 `GET /api/catalog` + `GET/POST /api/presence` |
+| [`src/cli/vite-plugin-catalog.ts`](../src/cli/vite-plugin-catalog.ts) | 开发态 `GET /api/catalog` + `GET/POST /api/presence` + `GET /api/openapi.json` |
 | [`src/cli/presence-store.mjs`](../src/cli/presence-store.mjs) / [`presence-http.mjs`](../src/cli/presence-http.mjs) | 内存出勤表（分态 TTL）与 HTTP 路由；Vite / CLI 共用 |
+| [`src/cli/openapi.mjs`](../src/cli/openapi.mjs) | OpenAPI 3.1 文档生成 + `GET /api/openapi.json`；落盘见 `pnpm gen:openapi` |
 | [`src/presence/`](../src/presence/) | 前端出勤类型、活锁谓词、稀疏气泡队列 |
 | [`src/cli/run.mjs`](../src/cli/run.mjs) / [`static.mjs`](../src/cli/static.mjs) | 预览态静态托管 + 同路径 API |
 | [`src/game/`](../src/game/) | Phaser 场景、小人 FSM、相机拖拽/缩放 |
@@ -100,7 +102,7 @@ flowchart LR
   hud -->|"blocked click POST idle"| presenceApi
 ```
 
-两种进程共用同一套 `CatalogSource`（v1 = `JsonFileSource`）与同一套出勤内存表：
+两种进程共用同一套 `CatalogSource`（v1 = `JsonFileSource`）与同一套出勤内存表；机器可读合同见 [`docs/openapi.md`](./openapi.md) / `GET /api/openapi.json`。
 
 | 模式 | 入口 | 默认地址 |
 |---|---|---|

@@ -126,6 +126,8 @@ curl -sS -X POST "$ORIGIN/api/presence" \
 
 TTL：`working` 10 分钟无新包 → 合成 idle；`blocked` **1 小时**兜底灭黄（不是 10 分钟）。
 
+机器可读合同（OpenAPI 3.1，无 Swagger UI）：`GET /api/openapi.json`；完整用法见 [`docs/openapi.md`](docs/openapi.md)。改协议后跑 `pnpm gen:openapi`。
+
 ## 数据约定
 
 - 只渲染 `workspaces[]`；`unmanaged` 不进办公室
