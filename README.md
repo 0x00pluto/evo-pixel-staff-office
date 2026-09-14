@@ -1,88 +1,18 @@
-# 像素员工办公室（evo-agent-team）
+# 像素员工办公室（@huyuan/pixel-office）
 
 把 AgentWikiIndex 的 `CATALOG.json` 花名册渲染成像素风办公室大屏：每个 workspace 是一个会走路的小人，头顶显示名字与状态，点击查看 owns / blurb / siblings。
 
-## 技术栈
+仓库目录名仍为 `evo-agent-team`；公开发布包名为 **`@huyuan/pixel-office`**。
 
-- Vite + React + TypeScript + Tailwind CSS
-- Phaser 4（Tiled 多层办公室 / 小人 FSM）
-- Vitest 单测（花名册映射 / 选图 / FSM；`pnpm test`）
-- 本地 Node CLI（读花名册 + 静态托管）
-- 包管理：**pnpm**
+## 一条命令起大屏（推荐）
 
-完整架构、目录约定与常改落点见 [`docs/dev-guide.md`](docs/dev-guide.md)。
-
-## 准备
-
-依赖已装则可跳过：
+需 Node ≥ 20：
 
 ```bash
-pnpm install
+npx @huyuan/pixel-office
 ```
 
-### 像素素材
-
-仓库已含运行时切片，**clone 后即可开发，无需再下 Pipoya 原包、也无需跑 `pnpm pack:assets`**：
-
-- 地图：`public/assets/maps/company-25.json` / `world-map.json` + `tilesets/*.png`（办公室地板在 **tileset1.png**；园区瓦片在 `tilesets/village/`）
-- 角色：`public/assets/characters.png`（已入库的 atlas）
-- 改图指南：[`docs/map-editing.md`](docs/map-editing.md)
-- 地图校验（可选）：`pnpm gen:assets`（**不**覆盖 PNG）
-
-署名与许可见 [`public/assets/CREDITS.md`](public/assets/CREDITS.md)。
-
-从 WA starter **重置**主图（覆盖 `company-25.json`，维护者偶发）：
-
-```bash
-pnpm import:wa-company
-```
-
-从 wa-village **重置**世界图（覆盖 `world-map.json` + `tilesets/village/`，本地测试）：
-
-```bash
-pnpm import:wa-world
-```
-#### 维护者：重打角色 atlas（偶发）
-
-仅当改皮肤清单 / 扩池时需要。原包**不要**提交 git（许可禁止再分发素材本体；`temp/` 已 gitignore）。协作者只拉更新后的 `characters.png`。
-
-1. 自备 itch [PIPOYA FREE RPG Character Sprites 32x32](https://pipoya.itch.io/pipoya-free-rpg-character-sprites-32x32)
-2. 解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA=…`）
-3. `pnpm pack:assets` → 覆盖 `public/assets/characters.png` → **提交该 PNG**
-
-## 开发
-
-无本地 `CATALOG.json` 也可启动（空办公室）；也可用可选种子：
-
-```bash
-# 空态 / 读用户目录 ~/.pixel-office/catalog.json
-pnpm dev
-
-# 推荐：Vite --force（避免旧依赖缓存）
-pnpm dev:office
-
-# 或显式指定可选种子
-EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json pnpm dev:office
-```
-
-浏览器打开终端提示的本地地址（默认 `http://localhost:5173`），**请硬刷新**（Cmd+Shift+R）。
-
-## 测试
-
-纯逻辑单测与源码放在一起（`src/**/*.test.ts`），不测 Phaser 画布：
-
-```bash
-pnpm test
-```
-
-## 一键预览（构建后）
-
-```bash
-pnpm build
-pnpm pixel-office
-# 可选种子：
-pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
-```
+浏览器会打开本地 origin（默认端口 **3780**）。无本地花名册时空办公室；再用顶栏「选择花名册」或 `POST /api/catalog` 注入。
 
 常用参数：
 
@@ -94,12 +24,92 @@ pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 也可设 `EVO_AGENT_CATALOG`（可选种子）。启动顺序：用户目录 `~/.pixel-office/catalog.json` → 可选种子 → 空态。`PIXEL_OFFICE_HOME` 可覆盖用户目录父路径。出勤 / 写花名册可选 `EVO_PRESENCE_TOKEN`。
 
+发行版与本地开发使用同一套地图：办公室 `company-25` + **25×25 色块世界桩图**（蓝底，中间两格白为回办公室传送）。npm tarball **不含** wa-village 园区大图；办公室装饰仍带两份用到的 village PNG（`fountain-sculptures` / `decor-rugs-1`）。
+
+## 技术栈
+
+- Vite + React + TypeScript + Tailwind CSS
+- Phaser 4（Tiled 多层办公室 / 小人 FSM）
+- Vitest 单测（花名册映射 / 选图 / FSM；`pnpm test`）
+- 本地 Node CLI（读花名册 + 静态托管）
+- 包管理：**pnpm**
+
+完整架构、目录约定与常改落点见 [`docs/dev-guide.md`](docs/dev-guide.md)。许可见根目录 [`LICENSE`](LICENSE) 与 [`public/assets/CREDITS.md`](public/assets/CREDITS.md)。
+
+## 本地开发
+
+```bash
+pnpm install
+# 空态 / 读用户目录 ~/.pixel-office/catalog.json
+pnpm dev
+# 推荐：Vite --force（避免旧依赖缓存）
+pnpm dev:office
+# 或显式指定可选种子
+EVO_AGENT_CATALOG=~/Documents/Codex/AgentWikiIndex/CATALOG.json pnpm dev:office
+```
+
+浏览器打开终端提示的本地地址（默认 `http://localhost:5173`），**请硬刷新**（Cmd+Shift+R）。
+
+### 像素素材
+
+仓库已含运行时切片，**clone 后即可开发，无需再下 Pipoya 原包、也无需跑 `pnpm pack:assets`**：
+
+- 地图：`public/assets/maps/company-25.json` / `world-map.json`（25×25 桩图）+ `tilesets/*.png`（办公室地板在 **tileset1.png**；桩图用 `tilesets/world-stub.png`）
+- 办公室仍引用的 village 切片：`tilesets/village/fountain-sculptures.png`、`decor-rugs-1.png`（其余 village 不进 npm dist）
+- 角色：`public/assets/characters.png`（已入库的 atlas）
+- 改图指南：[`docs/map-editing.md`](docs/map-editing.md)
+- 地图校验（可选）：`pnpm gen:assets`（**不**覆盖 PNG）；重建桩图：`pnpm gen:world-stub`
+
+从 WA starter **重置**主图（覆盖 `company-25.json`，维护者偶发）：
+
+```bash
+pnpm import:wa-company
+```
+
+`pnpm import:wa-world` 会用 wa-village 大图**覆盖**运行时桩图，默认日常**不要**跑；仅作授权清掉后的实验。恢复桩图：`pnpm gen:world-stub` 再 `pnpm gen:assets`。
+
+#### 维护者：重打角色 atlas（偶发）
+
+仅当改皮肤清单 / 扩池时需要。原包**不要**提交 git（许可禁止再分发素材本体；`temp/` 已 gitignore）。协作者只拉更新后的 `characters.png`。
+
+1. 自备 itch [PIPOYA FREE RPG Character Sprites 32x32](https://pipoya.itch.io/pipoya-free-rpg-character-sprites-32x32)
+2. 解压到 `temp/vendor/pipoya/`（或 `EVO_VENDOR_PIPOYA=…`）
+3. `pnpm pack:assets` → 覆盖 `public/assets/characters.png` → **提交该 PNG**
+
+## 测试
+
+纯逻辑单测与源码放在一起（`src/**/*.test.ts`），不测 Phaser 画布：
+
+```bash
+pnpm test
+```
+
+## 仓库内一键预览（构建后）
+
+```bash
+pnpm build
+pnpm pixel-office
+# 可选种子：
+pnpm pixel-office --catalog ~/Documents/Codex/AgentWikiIndex/CATALOG.json
+```
+
+`pnpm build` 会从 `dist/` 剔除未用的 `tilesets/village/**`（白名单两 PNG 除外）与 `maps/reference/`。
+
+## 维护者发版（人手，R0）
+
+```bash
+pnpm publish:check   # test + build + npm pack 门禁
+npm publish --access public   # 需 npm 登录且有 @huyuan 权限
+```
+
+门禁硬条件：tarball 有 `dist/index.html`；无 `art/`；`village` 路径仅允许上述两 PNG。
+
 ## 操作
 
 - 拖拽：移动相机
 - 滚轮：缩放
 - 点击小人 / 名牌：右侧详情卡；**黄灯（blocked）再点一次 = 已读灭黄**
-- 点击大门 / 回门区域：办公室 ↔ 世界地图（园区；世界图不显示员工）
+- 点击大门：进入 25×25 蓝底世界桩图（不显示员工）；点中间白格返回办公室门口
 - 顶栏「选择花名册」：读本地 JSON → `POST /api/catalog`（与 curl 同一写入）
 - 顶栏「刷新花名册」：`GET /api/catalog?refresh=1`
 
@@ -156,7 +166,7 @@ TTL：`working` 10 分钟无新包 → 合成 idle；`blocked` **1 小时**兜�
 - `name` ← `title` 中 `—` 前半段
 - `status` ← experiment / `owns[0]` / `blurb` 截断 /「待命」
 - 运行时权威为用户目录 JSON（`RuntimeCatalog`）；可选种子仅启动加载；`CatalogSource` / `JsonFileSource` 仍预留换源，本仓**不**实现 SQLite / Postgres
-- 地图用静态 id 注册（`company-25`、`world-map`；`kind: office | world`）；花名册**不加** company 字段
+- 地图用静态 id 注册（`company-25`、`world-map` 桩图；`kind: office | world`）；花名册**不加** company 字段
 
 ## 目录
 

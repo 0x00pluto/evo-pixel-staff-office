@@ -43,7 +43,7 @@ export const MAP_REGISTRY: Record<string, MapEntry> = {
   'world-map': {
     id: 'world-map',
     json: '/assets/maps/world-map.json',
-    label: 'World map (WA Village HQ)',
+    label: 'World stub (25×25 color exit)',
     kind: 'world',
   },
 }

@@ -34,8 +34,8 @@ function printHelp() {
   console.log(`pixel-office — 像素数字员工办公室大屏
 
 用法:
-  pnpm pixel-office
-  pnpm pixel-office --catalog <CATALOG.json路径>
+  npx @huyuan/pixel-office
+  npx @huyuan/pixel-office --catalog <CATALOG.json路径>
   pnpm pixel-office -c ~/Documents/Codex/AgentWikiIndex/CATALOG.json
 
 选项:
@@ -89,9 +89,17 @@ async function main() {
 
   const distDir = path.join(root, 'dist')
   if (!fs.existsSync(path.join(distDir, 'index.html'))) {
-    console.error(
-      `[pixel-office] 未找到构建产物 ${distDir}/index.html\n请先执行: pnpm build`,
-    )
+    const inRepo = fs.existsSync(path.join(root, 'package.json')) &&
+      fs.existsSync(path.join(root, 'vite.config.ts'))
+    if (inRepo) {
+      console.error(
+        `[pixel-office] 未找到构建产物 ${distDir}/index.html\n请先执行: pnpm build`,
+      )
+    } else {
+      console.error(
+        `[pixel-office] 未找到构建产物 ${distDir}/index.html\n包可能损坏或非官方安装；请重新执行: npx @huyuan/pixel-office`,
+      )
+    }
     process.exit(1)
   }
 

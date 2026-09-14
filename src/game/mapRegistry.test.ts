@@ -8,7 +8,7 @@ import {
 } from './mapRegistry'
 
 describe('map registry', () => {
-  it('registers the shipped office and world maps', () => {
+  it('registers the shipped office and world stub maps', () => {
     expect(isRegisteredMapId('company-25')).toBe(true)
     expect(isRegisteredMapId('world-map')).toBe(true)
     expect(isRegisteredMapId(OFFICE_TIER_IDS.s10)).toBe(false)

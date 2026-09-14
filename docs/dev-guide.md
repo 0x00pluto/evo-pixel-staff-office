@@ -32,14 +32,14 @@
 
 - 把 AgentWikiIndex 的 `CATALOG.json` 花名册渲染成像素风办公室大屏
 - 每个 `workspace` 一个会走路的小人，显示名字与状态，点击查看详情
-- 本地一键预览（`pixel-office` CLI）
+- 本地一键预览（`pixel-office` CLI）与公开发布 `npx @huyuan/pixel-office`
 
 **不做（见 AGENTS.md `not`）：**
 
 - Agent 业务实现
 - 实时任务状态监控
-- 发布到 npm registry
 - SQLite / Postgres 建表（仅预留 `CatalogSource` 接口）
+- 公开分发 wa-village 园区大图 / 整包 village 瓦片
 
 ## 技术栈与运行时
 
@@ -115,6 +115,7 @@ flowchart LR
 |---|---|---|
 | 开发 | `pnpm dev` → Vite + [`catalogApiPlugin`](../src/cli/vite-plugin-catalog.ts) | `http://localhost:5173` |
 | 一键预览 | `pnpm build` 后 `pnpm pixel-office` 托管 `dist/` | `http://localhost:3780` |
+| 公开发布 | `npx @huyuan/pixel-office`（预构建 dist） | `http://localhost:3780` |
 
 ### 运行时花名册（PRD-00008）
 
@@ -233,9 +234,9 @@ pnpm build
 | 路径 | 说明 |
 |---|---|
 | `/assets/maps/company-25.json` | 公司主图 ≤25（Tiled） |
-| `/assets/maps/world-map.json` | 世界园区图（`kind: world`，不 spawn 员工） |
-| `/assets/maps/tilesets/*.png` | 办公室 32×32 瓦片 |
-| `/assets/maps/tilesets/village/*.png` | 园区瓦片（本地测试导入） |
+| `/assets/maps/world-map.json` | 世界桩图 25×25（`kind: world`，不 spawn 员工） |
+| `/assets/maps/tilesets/*.png` | 办公室 32×32 瓦片；含 `world-stub.png` |
+| `/assets/maps/tilesets/village/*.png` | 办公室用到的两份切片（发行版白名单）；其余不进 dist |
 | `/assets/characters.png` | Pipoya atlas：12 列 × `SKIN_COUNT` 行（现 64；帧规格对齐 WA） |
 
 加载失败或未注册 `exitMap` 会走 `onAssetsError`，页面顶部显示提示。相机 bounds 等于当前地图像素尺寸；切图后落到 entry/start，仍可自由拖拽。`kind === 'world'` 时不 `spawnAgents`、名牌清空。

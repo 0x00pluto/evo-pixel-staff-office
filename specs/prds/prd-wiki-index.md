@@ -10,3 +10,4 @@
 | 00006 | `specs/prds/prd-00006-meaningful-wander-events.md` | 有意义闲逛：个人差事（lounge/coffee 软占）与集体开会（2–3 人分椅、全员到齐散会）；arity×place；工程 accepted（R0） |
 | 00007 | `specs/prds/prd-00007-live-presence.md` | 三态出勤：完工必 blocked；大屏点击已读灭黄；blocked 1h / working 10min TTL；工程 accepted（R0） |
 | 00008 | `specs/prds/prd-00008-runtime-catalog.md` | 运行时花名册：无本地 JSON 可启动；POST /api/catalog + 界面选文件；用户目录持久化；工程 accepted（R0） |
+| 00009 | `specs/prds/prd-00009-npx-publish.md` | 公开发布 `@huyuan/pixel-office`；npx 一条命令起大屏；R0 办公室 + 25×25 世界桩图；工程 accepted（R0） |

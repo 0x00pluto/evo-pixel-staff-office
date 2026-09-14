@@ -1,16 +1,34 @@
 {
-  "name": "evo-agent-team",
-  "private": true,
+  "name": "@huyuan/pixel-office",
   "version": "0.1.0",
+  "description": "Pixel office big-screen for AgentWikiIndex CATALOG.json — npx one command",
   "type": "module",
   "packageManager": "pnpm@10.26.2",
   "bin": {
     "pixel-office": "./bin/pixel-office.mjs"
   },
+  "files": [
+    "bin",
+    "dist",
+    "src/cli/*.mjs",
+    "src/catalog/skinCount.mjs",
+    "src/catalog/skinCount.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite",
     "dev:office": "vite --force",
     "build": "tsc -b && vite build",
+    "build:publish": "pnpm build",
+    "pack:gate": "node ./scripts/pack-gate.mjs",
+    "publish:check": "pnpm test && pnpm build:publish && pnpm pack:gate",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -18,6 +36,7 @@
     "pixel-office": "node ./bin/pixel-office.mjs",
     "gen:openapi": "node ./scripts/gen-openapi.mjs",
     "gen:assets": "node ./scripts/pack-art-tilesets.mjs && node ./scripts/pack-external-tilesets.mjs && node ./scripts/sync-tileset-assets-from-maps.mjs && node ./scripts/gen-pixel-assets.mjs",
+    "gen:world-stub": "node ./scripts/gen-world-stub.mjs",
     "pack:art-tilesets": "node ./scripts/pack-art-tilesets.mjs",
     "sync:tileset-assets": "node ./scripts/sync-tileset-assets-from-maps.mjs",
     "sync:map-palette": "node ./scripts/sync-map-palette.mjs",
@@ -30,10 +49,7 @@
     "crop:tiles": "node ./scripts/crop-tiles.mjs"
   },
   "dependencies": {
-    "open": "^11.0.2",
-    "phaser": "^4.2.1",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "open": "^11.0.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -42,6 +58,9 @@
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "oxlint": "^1.79.0",
+    "phaser": "^4.2.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",

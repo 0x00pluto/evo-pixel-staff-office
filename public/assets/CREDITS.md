@@ -7,13 +7,14 @@
 | 文件 / 目录 | 说明 |
 |---|---|
 | `maps/company-25.json` | 公司主图（≤25 人，WA starter 静态桌） |
-| `maps/world-map.json` | 世界园区图（本地测试导入自 wa-village；不显示员工） |
+| `maps/world-map.json` | 世界图：**25×25 色块桩图**（蓝底 + 中间白格回办公室；`pnpm gen:world-stub`） |
 | `maps/registry.json` | 地图 id 注册表（与 `src/game/mapRegistry.ts` 对齐；含 `kind`） |
 | `maps/tilesets/*.png` | WA 风 32×32 瓦片图（地板在 **tileset1.png**；CC-BY-SA 3.0） |
-| `maps/tilesets/village/` | 园区瓦片（`pnpm import:wa-world`；本地测试） |
+| `maps/tilesets/world-stub.png` | 世界桩图两色瓦片（蓝 / 白） |
+| `maps/tilesets/village/` | 办公室仍用的切片：`fountain-sculptures.png`、`decor-rugs-1.png`；其余 PNG 可留在 git 供 `import:wa-world`，**不进** npm dist |
 | `maps/tilesets/*.tsj` | 共享 Tiled tileset（`collides` 一处维护；`pnpm pack:tilesets` 灌进地图） |
 | `maps/tilesets/skins/*.png` | WA starter 皮肤色块（调色板备用，默认未挂进运行时 tileset 列表） |
-| `maps/reference/` | WA starter / chatzone / collections 对照（不进游戏） |
+| `maps/reference/` | WA starter / chatzone / collections 对照（不进游戏 / 不进 npm） |
 | `characters.png` | Pipoya 行走 atlas（**已入库的最终产物**；12 列 × `SKIN_COUNT` 行，现 64）。协作者直接用此文件，无需原包 |
 
 旧 atlas 办公室（`office.png` / `office-layout.json` 等）已从仓库删除。
@@ -51,13 +52,18 @@ pnpm pack:assets   # → 覆盖 characters.png；提交该 PNG 即可，协作�
 
 `company-25` 视觉层基于 WA starter `maps/starter/map.json`（CC-BY-SA）；本仓追加 exit / 命名入口 / objects。未复制 WorkAdventure `play/` AGPL 源码；`reference/collections/` 仅供对照。
 
-### WA Village 世界图（本地测试导入）
+### 世界桩图（运行时默认）
 
-- 地图：`maps/world-map.json`（由 `pnpm import:wa-world` 自 [`wa-headquarters.tmj`](https://github.com/workadventure/wa-village) 改写）
-- 瓦片：`maps/tilesets/village/`（仅运行所需 PNG；**未**拷贝 `src/` 脚本、`scavenger/`、季节变体整包）
-- 本机参考根：`/Users/peng.zhi/Documents/Object/参考项目/wa-village`（相对本仓 `../../参考项目/wa-village`）
+- 地图：`maps/world-map.json` — **25×25** 正交色块（蓝可走 / 中心两格白 = 回 `company-25`）
+- 瓦片：`maps/tilesets/world-stub.png`（本仓生成；`pnpm gen:world-stub`）
+- 世界图**不显示员工**；开发与 npm 发行版同一套
+
+### WA Village 大图（可选导入，非默认运行时）
+
+- 脚本：`pnpm import:wa-world` 自 [`wa-headquarters.tmj`](https://github.com/workadventure/wa-village) 覆盖 `world-map.json` + 拷贝 `tilesets/village/`
+- **会盖掉**运行时桩图；恢复：`pnpm gen:world-stub` → `pnpm gen:assets`
 - 许可：见对方仓库 `LICENSE.map` / `LICENSE.assets`；地图属性注明 **100 Roads / WA-only** 条款
-- **用途：本地测试导入。** 公开 git / 商用前须换图或取得授权（开放项，不挡本期预览）
+- **npm 包不含** wa-village 园区大图与除办公室两 PNG 外的 village 瓦片
 - 查法约定：[`docs/wa-reference.md`](../../docs/wa-reference.md)
 
 ### PIPOYA FREE RPG Character Sprites 32x32

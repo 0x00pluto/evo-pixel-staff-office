@@ -19,5 +19,9 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "src/cli/vite-plugin-catalog.ts"]
+  "include": [
+    "vite.config.ts",
+    "src/cli/vite-plugin-catalog.ts",
+    "src/cli/vite-plugin-publish-assets.ts"
+  ]
 }

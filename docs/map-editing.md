@@ -45,7 +45,7 @@ flowchart TB
 
 因此：桌上电脑若要挡住走过的人，画在 `abovePlayer1`（或任意 `floorLayer` **之上**的层）；画在 `aboveFurniture` 会被人「踩住」——这是正确行为，不是 bug。
 
-世界图 `world-map` **没有** `floorLayer`（导入时会丢掉），全部按 Tiled 顺序低档绘制；世界图**不 spawn 员工**。
+世界图 `world-map` 为 25×25 色块桩图，**没有** `floorLayer`；全部按 Tiled 顺序低档绘制；世界图**不 spawn 员工**。
 
 ---
 
@@ -67,10 +67,10 @@ flowchart TB
 | 路径 | 说明 |
 |------|------|
 | [`public/assets/maps/company-25.json`](../public/assets/maps/company-25.json) | **主图（≤25 人）** |
-| [`public/assets/maps/world-map.json`](../public/assets/maps/world-map.json) | **世界园区图**（出门往返；`kind: world`） |
+| [`public/assets/maps/world-map.json`](../public/assets/maps/world-map.json) | **世界桩图**（25×25 色块；出门往返；`kind: world`） |
 | [`public/assets/maps/registry.json`](../public/assets/maps/registry.json) | map id → JSON + `kind`；exit 只引用 id |
-| [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | 办公室瓦片；地板在 **tileset1.png**；碰撞标在 `*.tsj`；生成的 `art/tilesets/<pack>` 图集 |
-| [`public/assets/maps/tilesets/village/`](../public/assets/maps/tilesets/village/) | 园区瓦片（`pnpm import:wa-world`） |
+| [`public/assets/maps/tilesets/`](../public/assets/maps/tilesets/) | 办公室瓦片；地板在 **tileset1.png**；碰撞标在 `*.tsj`；生成的 `art/tilesets/<pack>` 图集；`world-stub.png` |
+| [`public/assets/maps/tilesets/village/`](../public/assets/maps/tilesets/village/) | 办公室用到的 `fountain-sculptures` / `decor-rugs-1`；其余供可选 `import:wa-world`（不进 npm） |
 | [`art/maps/maps.tiled-project`](../art/maps/maps.tiled-project) | **Tiled 工程入口**（唯一；会话在 `art/maps/`，不进 npx） |
 | [`art/tilesets/`](../art/tilesets/) | 自制图集：一类一目录；`raw/` 原始稿 + `src/` 条带 + manifest（`pnpm pack:art-tilesets`） |
 | [`public/assets/maps/README.md`](../public/assets/maps/README.md) | 工作区一页纸 |
@@ -112,7 +112,7 @@ pnpm dev:office               # 浏览器硬刷新
 | 预览 | `pnpm gen:assets` → `pnpm dev:office` → 硬刷新 |
 
 重置主图（覆盖 `company-25.json`，维护者偶发）：`pnpm import:wa-company`。  
-重置世界图：`pnpm import:wa-world`（需本机 wa-village，见 [`wa-reference.md`](./wa-reference.md)）。
+重置世界桩图：`pnpm gen:world-stub`（日常）。可选大图导入：`pnpm import:wa-world`（会覆盖桩图；见 [`wa-reference.md`](./wa-reference.md)）。
 
 ---
 
@@ -214,31 +214,32 @@ Jitsi / clock / website / audio 等 WA 功能层**不导入**。
 
 **不要**对已在地图上的 tileset 再点 `Add External Tileset...`。
 
-### 5. 改出入口（办公室 ↔ 园区）
+### 5. 改出入口（办公室 ↔ 世界桩图）
 
 | 地图 | `exit` 层属性 | 含义 |
 |------|---------------|------|
-| `company-25` | `exitMap=world-map`，`entryName=from-office` | 出门 → 园区 `from-office` |
-| `world-map` | `exitMap=company-25`，`entryName=office-door` | 回来 → 办公室门口 |
+| `company-25` | `exitMap=world-map`，`entryName=from-office` | 出门 → 桩图 `from-office`（白格南侧蓝格） |
+| `world-map` | `exitMap=company-25`，`entryName=office-door` | 点中间白格 → 办公室门口 |
 
 `exitMap` 必须是 [`registry.json`](../public/assets/maps/registry.json) 里已有的 id，不要写公网 URL。
 
 **怎么验：**
 
 1. `pnpm dev:office`，拖到公司大门  
-2. 点大门 `exit`（或等人踩上）→ 切到 `world-map`，落在 `from-office`；**无员工、无名牌**  
-3. 点园区办公楼门 → 回到 `company-25` 的 **`office-door`**，员工重新出现  
+2. 点大门 `exit`（或等人踩上）→ 切到 `world-map` 蓝底 25×25，落在 `from-office`；**无员工、无名牌**  
+3. 点中间白格 → 回到 `company-25` 的 **`office-door`**，员工重新出现  
 4. 黑屏 /「地图未注册」→ 查 `exitMap` 是否在 registry
 
-### 6. 改世界图
+### 6. 改世界桩图
 
-1. Tiled 打开 `world-map.json`  
-2. 视觉层按 Village 命名（`GroundWorld`、`AboveWorld*`、`roof*` 等）  
-3. 无员工 spawn；无 `floorLayer` 切点（全部低档按 Tiled 顺序）  
-4. 碰撞层名本仓为 `collisions`  
-5. Save → `pnpm gen:assets` → 预览
+1. 重建默认桩图：`pnpm gen:world-stub`（写 `world-map.json` + `tilesets/world-stub.png`）  
+2. 或 Tiled 打开 `world-map.json` 微调；保持正交 32×32、`exit` / `start` / `from-office`  
+3. 无员工 spawn；无 `floorLayer`  
+4. Save → `pnpm gen:assets` → 预览  
 
-村庄装饰优先改 `world-map`，避免往 `company-25` 加 `tilesets/village/*.tsj`。
+`pnpm import:wa-world` 会覆盖为 wa-village 大图（非默认）；恢复桩图再跑 `pnpm gen:world-stub`。
+
+办公室装饰若引用 `tilesets/village/`，npm 只放行当前画到的 PNG（见 pack 门禁），不要往 `company-25` 再挂整包 village。
 
 ---
 
@@ -292,7 +293,8 @@ pnpm pack:tilesets        # 把 tilesets/*.tsj 的 collides 灌进各地图 JSON
 pnpm annotate:collides    # 批量补 .tsj 的 collides，再 pack
 pnpm sync:map-palette     # 从本机 WA maps/assets 再同步 tileset PNG
 pnpm import:wa-company    # 用 WA starter 重置 company-25（结束后会 pack）
-pnpm import:wa-world      # 重置 world-map + village tilesets
+pnpm gen:world-stub     # 重建 25×25 色块世界桩图
+pnpm import:wa-world    # 可选：覆盖为 wa-village 大图（非默认）
 pnpm pack:assets          # 仅组装 Pipoya characters.png
 pnpm crop:tiles extract … # 从 WA 图集只读抠格 → temp/crops/（禁止写回）
 pnpm dev:office           # 本地预览（推荐）
