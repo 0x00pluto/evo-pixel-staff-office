@@ -8,6 +8,7 @@
 - `README.md`: 首要 `npx @huyuan-ai/pixel-office`；开发路径次之；运行时花名册 / 出勤 curl 验收与数据约定；OpenAPI 见 `docs/openapi.md`；含 Tiled maps / `pack:assets` / `gen:assets` / `gen:world-stub` / 发版门禁
 - `docs/dev-guide.md`: 新人开发指南——架构、数据流（RuntimeCatalog + presence + openapi）、本地启动、游戏层约定、**代码检索顺序**；**对齐 WA 人物做法**（非 24 套数量）、脚底碰撞盒 24×24；Vitest 单测（`src/**/*.test.ts`，`pnpm test`）
 - `docs/openapi.md`: OpenAPI 3.1 JSON 合同用法——`GET /api/openapi.json`（无 Swagger UI）；Agent 调法（先 POST catalog 再 presence）；`pnpm gen:openapi` 防漂移；字段以 JSON 为准
+- `docs/help/`: 产品帮助导航；运行时全文见 `src/cli/help.md` → `GET /help.md`（含「给 Evo Agent」）；顶栏「复制帮助」
 - `docs/map-editing.md`: 改图交接手册——心智模型（`floorLayer`）、任务菜谱、碰撞 / exit / objects、踩坑清单；**art/maps + art/tilesets**、`pack:art-tilesets` 多目录顺序锁定；世界图为 25×25 色块桩图；WA 抠格执行清单见 `docs/workflows/crop-wa-tiles.md`
 - `docs/workflows/_TEMPLATE.md`: 业务 workflow 六段骨架；新建可复跑流程时复制并改名，写完后登记本索引
 - `docs/workflows/crop-wa-tiles.md`: 从 WA `tileset*_export` 只读抠格 → `temp/crops/`（`pnpm crop:tiles`）；禁止写回；晋升 `raw/` → 条带 `src/` → `pack:art-tilesets`

@@ -110,8 +110,11 @@ npm publish --access public   # 需 npm 登录且有 @huyuan-ai 权限
 - 滚轮：缩放
 - 点击小人 / 名牌：右侧详情卡；**黄灯（blocked）再点一次 = 已读灭黄**
 - 点击大门：进入 25×25 蓝底世界桩图（不显示员工）；点中间白格返回办公室门口
+- 顶栏「复制帮助」：复制 `{origin}/help.md#agent`（含 Agent 指引），可贴给 Evo Agent
 - 顶栏「选择花名册」：读本地 JSON → `POST /api/catalog`（与 curl 同一写入）
 - 顶栏「刷新花名册」：`GET /api/catalog?refresh=1`
+
+运行时帮助全文：`GET /help.md`（`/help` 跳转）；仓库导航见 [`docs/help/`](docs/help/)。
 
 ## 运行时花名册（Runtime Catalog）
 

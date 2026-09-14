@@ -2,8 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 
 /**
- * Vite plugin: serves GET/POST /api/catalog, GET/POST /api/presence, and GET /api/openapi.json
- * during `pnpm dev` using the same RuntimeCatalog / presence store as the production CLI.
+ * Vite plugin: serves GET/POST /api/catalog, GET/POST /api/presence, GET /api/openapi.json,
+ * and GET /help.md during `pnpm dev` using the same handlers as the production CLI.
  */
 export function catalogApiPlugin(): Plugin {
   return {
@@ -77,6 +77,13 @@ export function catalogApiPlugin(): Plugin {
         handleOpenApi: (req: IncomingMessage, res: ServerResponse) => boolean
       }
 
+      const helpMod = (await import(
+        /* @vite-ignore */
+        new URL('./help.mjs', import.meta.url).href
+      )) as {
+        handleHelp: (req: IncomingMessage, res: ServerResponse) => boolean
+      }
+
       const seed = catalogMod.resolveSeedForBoot({
         cliPath: null,
         envPath: process.env.EVO_AGENT_CATALOG,
@@ -134,6 +141,11 @@ export function catalogApiPlugin(): Plugin {
 
       server.middlewares.use(async (req, res, next) => {
         try {
+          const pathOnly = (req.url || '/').split('?')[0]
+          if (pathOnly === '/help' || pathOnly === '/help.md') {
+            if (helpMod.handleHelp(req, res)) return
+          }
+
           if (req.url?.startsWith('/api/openapi.json')) {
             if (openapiMod.handleOpenApi(req, res)) return
           }

@@ -13,6 +13,7 @@ import {
   createPresenceStore,
 } from './presence-http.mjs'
 import { handleOpenApi } from './openapi.mjs'
+import { handleHelp } from './help.mjs'
 import { createStaticHandler } from './static.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -135,6 +136,14 @@ async function main() {
   const staticHandler = createStaticHandler(distDir)
 
   const server = http.createServer(async (req, res) => {
+    try {
+      if (handleHelp(req, res)) return
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
+      res.end(err instanceof Error ? err.message : String(err))
+      return
+    }
+
     try {
       if (handleOpenApi(req, res)) return
     } catch (err) {

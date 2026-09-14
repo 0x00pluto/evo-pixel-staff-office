@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 interface Props {
   agentCount: number
@@ -9,6 +9,14 @@ interface Props {
   onRefresh: () => void
   onToggleFootDebug: () => void
   onPickCatalog: (file: File) => void
+}
+
+function helpClipboardText() {
+  const origin = window.location.origin
+  return [
+    `大屏帮助（含 Agent 指引）：${origin}/help.md#agent`,
+    '先 POST /api/catalog；开干 working；做完/卡住 blocked。',
+  ].join('\n')
 }
 
 export function Toolbar({
@@ -23,6 +31,26 @@ export function Toolbar({
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const empty = !error && agentCount === 0
+  const [copied, setCopied] = useState(false)
+
+  const copyHelp = async () => {
+    const text = helpClipboardText()
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Fallback for older browsers / insecure context
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1600)
+  }
 
   return (
     <header className="hud-panel absolute top-0 right-0 left-0 z-20 flex items-center gap-3 border-b-2 px-3 py-2">
@@ -54,6 +82,14 @@ export function Toolbar({
           if (file) onPickCatalog(file)
         }}
       />
+      <button
+        type="button"
+        onClick={() => void copyHelp()}
+        className="hud-btn px-2.5 py-1 text-xs"
+        title="复制帮助链接（含 Agent 指引锚点），可贴给 Evo Agent"
+      >
+        {copied ? '已复制' : '复制帮助'}
+      </button>
       <button
         type="button"
         disabled={loading}

@@ -21,6 +21,8 @@ curl -sS http://localhost:5173/api/openapi.json | head
 
 ## 给 Agent 怎么调
 
+最短入口：打开运行中实例的 **`/help.md#agent`**（顶栏「复制帮助」可复制该链接）。字段权威仍是 OpenAPI。
+
 1. （可选）`GET /api/catalog` — 空态时 `agents: []` 合法。
 2. `POST /api/catalog` — 注入完整 CATALOG.json（必须含 `workspaces` 数组）；成功后持久化到 `~/.pixel-office/catalog.json`。
 3. `GET /api/catalog` → 取 `agents[].id`。
@@ -32,7 +34,7 @@ curl -sS http://localhost:5173/api/openapi.json | head
 
 可选鉴权：设了 `EVO_PRESENCE_TOKEN` 时，跨机 `POST /api/catalog` 与 `POST /api/presence` 需 `Authorization: Bearer <token>`；同源浏览器可免。未设则开放。
 
-最短 curl 示例见 [`README.md`](../README.md)「运行时花名册」与「实时出勤」节。
+最短 curl 示例见运行时 [`/help.md`](../src/cli/help.md) 与 [`README.md`](../README.md)「运行时花名册」与「实时出勤」节。导航见 [`docs/help/`](./help/)。
 
 ## 怎么改合同
 

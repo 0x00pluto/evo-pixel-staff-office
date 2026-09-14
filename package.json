@@ -11,6 +11,7 @@
     "bin",
     "dist",
     "src/cli/*.mjs",
+    "src/cli/help.md",
     "src/catalog/skinCount.mjs",
     "src/catalog/skinCount.json",
     "LICENSE",
